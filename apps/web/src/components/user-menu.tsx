@@ -11,6 +11,7 @@ import {
 import { Skeleton } from "@my-better-t-app/ui/components/skeleton";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth-client";
 
@@ -25,7 +26,7 @@ export default function UserMenu() {
   if (!session) {
     return (
       <Link href="/login">
-        <Button variant="outline">Sign In</Button>
+        <Button variant="outline">登录</Button>
       </Link>
     );
   }
@@ -37,9 +38,8 @@ export default function UserMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent className="bg-card">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuLabel>我的账户</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>{session.user.email}</DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
             onClick={() => {
@@ -47,12 +47,16 @@ export default function UserMenu() {
                 fetchOptions: {
                   onSuccess: () => {
                     router.push("/");
+                    router.refresh();
+                  },
+                  onError: () => {
+                    toast.error("退出失败，请稍后再试");
                   },
                 },
               });
             }}
           >
-            Sign Out
+            退出登录
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

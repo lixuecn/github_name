@@ -7,6 +7,9 @@ allowBuilds:
   "@prisma/client": true
   "@prisma/engines": true
   prisma: true
+  "@embedded-postgres/darwin-arm64": true
+  "@embedded-postgres/darwin-x64": true
+  "@embedded-postgres/linux-x64": true
 overrides:
   "@next/env": npm:@varlock/nextjs-integration@1.2.2
 catalog:

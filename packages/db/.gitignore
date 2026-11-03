@@ -7,6 +7,9 @@ dist
 *.tgz
 /prisma/generated
 
+# local database data (pnpm db:start)
+.local-postgres
+
 # code coverage
 coverage
 *.lcov

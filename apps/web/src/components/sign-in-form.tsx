@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
 
 import Loader from "./loader";
 
@@ -16,30 +17,34 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
 
   const form = useForm({
     defaultValues: {
-      email: "",
+      username: "",
       password: "",
     },
     onSubmit: async ({ value }) => {
-      await authClient.signIn.email(
+      await authClient.signIn.username(
         {
-          email: value.email,
+          username: value.username,
           password: value.password,
         },
         {
           onSuccess: () => {
             router.push("/dashboard");
-            toast.success("Sign in successful");
+            toast.success("登录成功");
           },
           onError: (error) => {
-            toast.error(error.error.message || error.error.statusText);
+            toast.error(getAuthErrorMessage(error.error, "登录失败，请稍后再试"));
           },
         },
       );
     },
     validators: {
       onSubmit: z.object({
-        email: z.email("Invalid email address"),
-        password: z.string().min(8, "Password must be at least 8 characters"),
+        username: z
+          .string()
+          .min(3, "用户名至少 3 个字符")
+          .max(20, "用户名不能超过 20 个字符")
+          .regex(/^[a-zA-Z0-9_]+$/, "用户名只能包含字母、数字和下划线"),
+        password: z.string().min(8, "密码至少 8 个字符"),
       }),
     },
   });
@@ -50,7 +55,7 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
 
   return (
     <div className="mx-auto w-full mt-10 max-w-md p-6">
-      <h1 className="mb-6 text-center text-3xl font-bold">Welcome Back</h1>
+      <h1 className="mb-6 text-center text-3xl font-bold">欢迎回来</h1>
 
       <form
         onSubmit={(e) => {
@@ -61,14 +66,14 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
         className="space-y-4"
       >
         <div>
-          <form.Field name="email">
+          <form.Field name="username">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Email</Label>
+                <Label htmlFor={field.name}>用户名</Label>
                 <Input
                   id={field.name}
                   name={field.name}
-                  type="email"
+                  autoComplete="username"
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
@@ -87,11 +92,12 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
           <form.Field name="password">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Password</Label>
+                <Label htmlFor={field.name}>密码</Label>
                 <Input
                   id={field.name}
                   name={field.name}
                   type="password"
+                  autoComplete="current-password"
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
@@ -111,7 +117,7 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
         >
           {({ canSubmit, isSubmitting }) => (
             <Button type="submit" className="w-full" disabled={!canSubmit || isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Sign In"}
+              {isSubmitting ? "登录中…" : "登录"}
             </Button>
           )}
         </form.Subscribe>
@@ -123,7 +129,7 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
           onClick={onSwitchToSignUp}
           className="text-indigo-600 hover:text-indigo-800"
         >
-          Need an account? Sign Up
+          没有账号？去注册
         </Button>
       </div>
     </div>

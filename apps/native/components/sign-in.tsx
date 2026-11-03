@@ -15,11 +15,17 @@ import { Text, View } from "react-native";
 import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { queryClient } from "@/utils/trpc";
 
 const signInSchema = z.object({
-  email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
-  password: z.string().min(1, "Password is required").min(8, "Use at least 8 characters"),
+  username: z
+    .string()
+    .trim()
+    .min(3, "用户名至少 3 个字符")
+    .max(20, "用户名不能超过 20 个字符")
+    .regex(/^[a-zA-Z0-9_]+$/, "用户名只能包含字母、数字和下划线"),
+  password: z.string().min(8, "密码至少 8 个字符"),
 });
 
 function getErrorMessage(error: unknown): string | null {
@@ -55,30 +61,30 @@ function SignIn() {
 
   const form = useForm({
     defaultValues: {
-      email: "",
+      username: "",
       password: "",
     },
     validators: {
       onSubmit: signInSchema,
     },
     onSubmit: async ({ value, formApi }) => {
-      await authClient.signIn.email(
+      await authClient.signIn.username(
         {
-          email: value.email.trim(),
+          username: value.username.trim(),
           password: value.password,
         },
         {
           onError(error) {
             toast.show({
               variant: "danger",
-              label: error.error?.message || "Failed to sign in",
+              label: getAuthErrorMessage(error.error, "登录失败，请稍后再试"),
             });
           },
           onSuccess() {
             formApi.reset();
             toast.show({
               variant: "success",
-              label: "Signed in successfully",
+              label: "登录成功",
             });
             queryClient.refetchQueries();
           },
@@ -89,79 +95,72 @@ function SignIn() {
 
   return (
     <Surface variant="secondary" className="p-4 rounded-lg">
-      <Text className="text-foreground font-medium mb-4">Sign In</Text>
+      <Text className="text-foreground font-medium mb-4">登录</Text>
 
-      <form.Subscribe
-        selector={(state) => ({
-          isSubmitting: state.isSubmitting,
-          validationError: getErrorMessage(state.errorMap.onSubmit),
-        })}
-      >
-        {({ isSubmitting, validationError }) => {
-          const formError = validationError;
+      <View className="gap-3">
+        <form.Field name="username">
+          {(field) => {
+            const error = getErrorMessage(field.state.meta.errors);
+            return (
+              <TextField isInvalid={!!error}>
+                <Label>用户名</Label>
+                <Input
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChangeText={field.handleChange}
+                  placeholder="请输入用户名"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="username"
+                  textContentType="username"
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  onSubmitEditing={() => {
+                    passwordInputRef.current?.focus();
+                  }}
+                />
+                <FieldError>{error}</FieldError>
+              </TextField>
+            );
+          }}
+        </form.Field>
 
-          return (
-            <>
-              <FieldError isInvalid={!!formError} className="mb-3">
-                {formError}
-              </FieldError>
+        <form.Field name="password">
+          {(field) => {
+            const error = getErrorMessage(field.state.meta.errors);
+            return (
+              <TextField isInvalid={!!error}>
+                <Label>密码</Label>
+                <Input
+                  ref={passwordInputRef}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChangeText={field.handleChange}
+                  placeholder="请输入密码"
+                  secureTextEntry
+                  autoComplete="password"
+                  textContentType="password"
+                  returnKeyType="go"
+                  onSubmitEditing={form.handleSubmit}
+                />
+                <FieldError>{error}</FieldError>
+              </TextField>
+            );
+          }}
+        </form.Field>
 
-              <View className="gap-3">
-                <form.Field name="email">
-                  {(field) => (
-                    <TextField>
-                      <Label>Email</Label>
-                      <Input
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChangeText={field.handleChange}
-                        placeholder="email@example.com"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoComplete="email"
-                        textContentType="emailAddress"
-                        returnKeyType="next"
-                        blurOnSubmit={false}
-                        onSubmitEditing={() => {
-                          passwordInputRef.current?.focus();
-                        }}
-                      />
-                    </TextField>
-                  )}
-                </form.Field>
-
-                <form.Field name="password">
-                  {(field) => (
-                    <TextField>
-                      <Label>Password</Label>
-                      <Input
-                        ref={passwordInputRef}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChangeText={field.handleChange}
-                        placeholder="••••••••"
-                        secureTextEntry
-                        autoComplete="password"
-                        textContentType="password"
-                        returnKeyType="go"
-                        onSubmitEditing={form.handleSubmit}
-                      />
-                    </TextField>
-                  )}
-                </form.Field>
-
-                <Button onPress={form.handleSubmit} isDisabled={isSubmitting} className="mt-1">
-                  {isSubmitting ? (
-                    <Spinner size="sm" color="default" />
-                  ) : (
-                    <Button.Label>Sign In</Button.Label>
-                  )}
-                </Button>
-              </View>
-            </>
-          );
-        }}
-      </form.Subscribe>
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {(isSubmitting) => (
+            <Button onPress={form.handleSubmit} isDisabled={isSubmitting} className="mt-1">
+              {isSubmitting ? (
+                <Spinner size="sm" color="default" />
+              ) : (
+                <Button.Label>登录</Button.Label>
+              )}
+            </Button>
+          )}
+        </form.Subscribe>
+      </View>
     </Surface>
   );
 }

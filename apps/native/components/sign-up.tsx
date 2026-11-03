@@ -15,13 +15,24 @@ import { Text, View } from "react-native";
 import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { queryClient } from "@/utils/trpc";
 
-const signUpSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").min(2, "Name must be at least 2 characters"),
-  email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
-  password: z.string().min(1, "Password is required").min(8, "Use at least 8 characters"),
-});
+const signUpSchema = z
+  .object({
+    username: z
+      .string()
+      .trim()
+      .min(3, "用户名至少 3 个字符")
+      .max(20, "用户名不能超过 20 个字符")
+      .regex(/^[a-zA-Z0-9_]+$/, "用户名只能包含字母、数字和下划线"),
+    password: z.string().min(8, "密码至少 8 个字符"),
+    confirmPassword: z.string().min(1, "请再次输入密码"),
+  })
+  .refine((value) => value.password === value.confirmPassword, {
+    message: "两次输入的密码不一致",
+    path: ["confirmPassword"],
+  });
 
 function getErrorMessage(error: unknown): string | null {
   if (!error) return null;
@@ -51,38 +62,41 @@ function getErrorMessage(error: unknown): string | null {
 }
 
 export function SignUp() {
-  const emailInputRef = useRef<InputRef>(null);
   const passwordInputRef = useRef<InputRef>(null);
+  const confirmPasswordInputRef = useRef<InputRef>(null);
   const { toast } = useToast();
 
   const form = useForm({
     defaultValues: {
-      name: "",
-      email: "",
+      username: "",
       password: "",
+      confirmPassword: "",
     },
     validators: {
       onSubmit: signUpSchema,
     },
     onSubmit: async ({ value, formApi }) => {
+      const username = value.username.trim();
       await authClient.signUp.email(
         {
-          name: value.name.trim(),
-          email: value.email.trim(),
+          // The server replaces this with a placeholder derived from the username.
+          email: "",
+          name: username,
+          username,
           password: value.password,
         },
         {
           onError(error) {
             toast.show({
               variant: "danger",
-              label: error.error?.message || "Failed to sign up",
+              label: getAuthErrorMessage(error.error, "注册失败，请稍后再试"),
             });
           },
           onSuccess() {
             formApi.reset();
             toast.show({
               variant: "success",
-              label: "Account created successfully",
+              label: "注册成功",
             });
             queryClient.refetchQueries();
           },
@@ -93,101 +107,99 @@ export function SignUp() {
 
   return (
     <Surface variant="secondary" className="p-4 rounded-lg">
-      <Text className="text-foreground font-medium mb-4">Create Account</Text>
+      <Text className="text-foreground font-medium mb-4">创建账号</Text>
 
-      <form.Subscribe
-        selector={(state) => ({
-          isSubmitting: state.isSubmitting,
-          validationError: getErrorMessage(state.errorMap.onSubmit),
-        })}
-      >
-        {({ isSubmitting, validationError }) => {
-          const formError = validationError;
+      <View className="gap-3">
+        <form.Field name="username">
+          {(field) => {
+            const error = getErrorMessage(field.state.meta.errors);
+            return (
+              <TextField isInvalid={!!error}>
+                <Label>用户名</Label>
+                <Input
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChangeText={field.handleChange}
+                  placeholder="字母、数字或下划线"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="username"
+                  textContentType="username"
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  onSubmitEditing={() => {
+                    passwordInputRef.current?.focus();
+                  }}
+                />
+                <FieldError>{error}</FieldError>
+              </TextField>
+            );
+          }}
+        </form.Field>
 
-          return (
-            <>
-              <FieldError isInvalid={!!formError} className="mb-3">
-                {formError}
-              </FieldError>
+        <form.Field name="password">
+          {(field) => {
+            const error = getErrorMessage(field.state.meta.errors);
+            return (
+              <TextField isInvalid={!!error}>
+                <Label>密码</Label>
+                <Input
+                  ref={passwordInputRef}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChangeText={field.handleChange}
+                  placeholder="至少 8 个字符"
+                  secureTextEntry
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  onSubmitEditing={() => {
+                    confirmPasswordInputRef.current?.focus();
+                  }}
+                />
+                <FieldError>{error}</FieldError>
+              </TextField>
+            );
+          }}
+        </form.Field>
 
-              <View className="gap-3">
-                <form.Field name="name">
-                  {(field) => (
-                    <TextField>
-                      <Label>Name</Label>
-                      <Input
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChangeText={field.handleChange}
-                        placeholder="John Doe"
-                        autoComplete="name"
-                        textContentType="name"
-                        returnKeyType="next"
-                        blurOnSubmit={false}
-                        onSubmitEditing={() => {
-                          emailInputRef.current?.focus();
-                        }}
-                      />
-                    </TextField>
-                  )}
-                </form.Field>
+        <form.Field name="confirmPassword">
+          {(field) => {
+            const error = getErrorMessage(field.state.meta.errors);
+            return (
+              <TextField isInvalid={!!error}>
+                <Label>确认密码</Label>
+                <Input
+                  ref={confirmPasswordInputRef}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChangeText={field.handleChange}
+                  placeholder="再次输入密码"
+                  secureTextEntry
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  returnKeyType="go"
+                  onSubmitEditing={form.handleSubmit}
+                />
+                <FieldError>{error}</FieldError>
+              </TextField>
+            );
+          }}
+        </form.Field>
 
-                <form.Field name="email">
-                  {(field) => (
-                    <TextField>
-                      <Label>Email</Label>
-                      <Input
-                        ref={emailInputRef}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChangeText={field.handleChange}
-                        placeholder="email@example.com"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoComplete="email"
-                        textContentType="emailAddress"
-                        returnKeyType="next"
-                        blurOnSubmit={false}
-                        onSubmitEditing={() => {
-                          passwordInputRef.current?.focus();
-                        }}
-                      />
-                    </TextField>
-                  )}
-                </form.Field>
-
-                <form.Field name="password">
-                  {(field) => (
-                    <TextField>
-                      <Label>Password</Label>
-                      <Input
-                        ref={passwordInputRef}
-                        value={field.state.value}
-                        onBlur={field.handleBlur}
-                        onChangeText={field.handleChange}
-                        placeholder="••••••••"
-                        secureTextEntry
-                        autoComplete="new-password"
-                        textContentType="newPassword"
-                        returnKeyType="go"
-                        onSubmitEditing={form.handleSubmit}
-                      />
-                    </TextField>
-                  )}
-                </form.Field>
-
-                <Button onPress={form.handleSubmit} isDisabled={isSubmitting} className="mt-1">
-                  {isSubmitting ? (
-                    <Spinner size="sm" color="default" />
-                  ) : (
-                    <Button.Label>Create Account</Button.Label>
-                  )}
-                </Button>
-              </View>
-            </>
-          );
-        }}
-      </form.Subscribe>
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {(isSubmitting) => (
+            <Button onPress={form.handleSubmit} isDisabled={isSubmitting} className="mt-1">
+              {isSubmitting ? (
+                <Spinner size="sm" color="default" />
+              ) : (
+                <Button.Label>注册</Button.Label>
+              )}
+            </Button>
+          )}
+        </form.Subscribe>
+      </View>
     </Surface>
   );
 }
