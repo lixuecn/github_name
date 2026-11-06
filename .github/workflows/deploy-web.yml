@@ -33,6 +33,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma Client
+        run: pnpm --filter @my-better-t-app/db db:generate
+        env:
+          # Generation loads the config but does not connect to a database.
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+
       - name: Build for Cloudflare
         run: pnpm --filter web build:cloudflare
         env:
