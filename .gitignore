@@ -4,6 +4,9 @@ node_modules
 .pnp.js
 
 # Build outputs
+.open-next
+.wrangler
+.dev.vars
 dist
 build
 *.tsbuildinfo

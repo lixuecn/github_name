@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev --port 3001",
     "build": "next build",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "deploy": "pnpm build:cloudflare && opennextjs-cloudflare deploy",
     "check-types": "tsc --noEmit",
     "start": "next start",
     "env:generate": "varlock codegen"
@@ -32,12 +34,14 @@
   },
   "devDependencies": {
     "@my-better-t-app/config": "workspace:*",
+    "@opennextjs/cloudflare": "^1.20.16",
     "@tailwindcss/postcss": "catalog:",
     "@tanstack/react-query-devtools": "^5.104.2",
     "@types/node": "catalog:",
     "@types/react": "^19.2.18",
     "@types/react-dom": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "wrangler": "^4.157.0"
   }
 }

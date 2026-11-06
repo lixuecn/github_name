@@ -1,0 +1,46 @@
+name: Deploy Web to Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-web-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_SERVER_URL: ${{ vars.NEXT_PUBLIC_SERVER_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Validate API URL
+        run: test -n "$NEXT_PUBLIC_SERVER_URL" || { echo "Set the NEXT_PUBLIC_SERVER_URL repository variable"; exit 1; }
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build for Cloudflare
+        run: pnpm --filter web build:cloudflare
+        env:
+          NODE_ENV: production
+
+      - name: Deploy Worker
+        run: pnpm --filter web exec opennextjs-cloudflare deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
