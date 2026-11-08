@@ -47,12 +47,14 @@ const INTAKE_SCHEMA = {
     requirementDocs: { type: 'array', items: { type: 'string' } },
     referenceDocs: { type: 'array', items: { type: 'string' } },
     existingSpecs: { type: 'string', enum: ['none', 'same-source', 'unknown-source'] },
+    staleSpecs: { type: 'array', items: { type: 'string' }, description: '需求已被替换、不再有对应需求的旧 specs 目录' },
+    envBlockers: { type: 'array', items: { type: 'string' }, description: '本机缺失的开发 / 测试环境' },
     features: {
       type: 'array',
       items: {
         type: 'object',
         properties: {
-          dir: { type: 'string', description: '如 01-registration' },
+          dir: { type: 'string', description: '如 01-github-api、02-web-github-admin' },
           title: { type: 'string' },
           scope: { type: 'string', description: '本目录负责的需求范围与共享能力归属' },
           dependsOn: { type: 'array', items: { type: 'string' } },
@@ -250,10 +252,11 @@ phase('Intake')
 const intake = await agent(
   `你是需求分析员。目标项目目录：${input.dir ?? '当前工作目录'}。
 1. 读取该目录 docs/ 下所有 Markdown（含子目录），区分需求文档和技术资料。docs/ 不存在或没有需求文档时 status=needs-input 并在 questions 中说明，不编造。
-2. 读取 AGENTS.md 及其引用的文档，再用项目结构与依赖配置（package.json、lockfile、目录树）核对。AGENTS.md 不存在时 agentsMdFound=false，并加一条 blocking 问题「是否在没有 AGENTS.md 的情况下继续（以实际代码为准）」。
-3. 检查 specs/：不存在 → none；内容来自同一批需求 → same-source（沿用已有目录名与编号）；来源不明 → unknown-source 并加 blocking 问题，不要覆盖。
-4. 按「可独立验收」的功能拆分目录（01-xxx、02-xxx，kebab-case 英文），共享能力只归属一个目录，写进 scope；dependsOn 写依赖的目录名。
+2. 读取 AGENTS.md 及其引用的文档，再用项目结构与依赖配置（package.json、lockfile、目录树）核对。AGENTS.md 不存在时 agentsMdFound=false，并加一条 blocking 问题「是否在没有 AGENTS.md 的情况下继续（以实际代码为准）」。AGENTS.md 描述的模块在代码中已不存在（或反之）时，以实际代码为准，并把差异写进相关目录的 scope。
+3. 检查 specs/：不存在 → none；内容来自同一批需求 → same-source（沿用已有目录名与编号）；来源不明 → unknown-source 并加 blocking 问题，不要覆盖。docs/ 中的需求已被替换、旧目录不再有对应需求时，列入 staleSpecs 并加 blocking 问题「是否删除这些旧目录」，不擅自保留或删除。
+4. 按「可独立验收」的功能拆分目录（01-xxx、02-xxx，kebab-case 英文），共享能力（如数据模型、共享校验）只归属一个目录，写进 scope；dependsOn 写依赖的目录名。需求涉及多端时按端拆分：服务端能力（数据模型、接口、第三方 API 接入）单独成目录且编号最前，Web 端、App 端各成一个目录并依赖它，例如 01-github-api、02-web-github-admin、03-native-github-list。
 5. 只拆分需求文档涉及的内容，不扩大范围。影响实现的含糊点设为 blocking 问题，不影响的给出 assumption。
+6. 检查本机开发与测试环境（Node 版本、数据库、浏览器、App 模拟器或真机、Codex CLI），缺失项写入 envBlockers（不作为 blocking 问题，之后写入对应 task.md 并标为阻塞）。
 本步骤只读，不写任何文件。projectRoot 返回绝对路径。
 ${RULES}`,
   { label: 'intake', phase: 'Intake', schema: INTAKE_SCHEMA },
@@ -287,6 +290,7 @@ const specs = await pipeline(ordered, (f) =>
 全部目录划分（共享能力只在归属目录实现，其他目录用相对链接引用）：
 ${featureList}
 本目录范围：${f.scope}
+本机缺失的环境：${(intake.envBlockers ?? []).join('、') || '无'}（与本目录相关的写入 task.md 并标为阻塞）
 
 requirements.md：目标、用户、范围、非目标；REQ 编号；每项写业务规则、触发条件、预期结果、异常边界和可验证的验收条件，不写「功能正常」这类泛化描述；待确认项与假设单列。
 design.md：开头「技术背景」只列与本功能相关的技术栈、目录结构、架构分层、编码规范、测试命令、可复用模块，每条注明来源文件；设计项格式：

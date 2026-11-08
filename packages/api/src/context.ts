@@ -1,7 +1,12 @@
-import type { Session } from "@my-better-t-app/auth";
 import type { Database } from "@my-better-t-app/db";
 
+import type { GithubClient } from "./github-client";
+import type { RateLimiter } from "./rate-limit";
+
 export type Context = {
-  session: Session | null;
   db: Database;
+  github: GithubClient;
+  rateLimiter: RateLimiter;
+  /** Peer address of the connection; null when the runtime cannot provide one. */
+  clientIp: string | null;
 };

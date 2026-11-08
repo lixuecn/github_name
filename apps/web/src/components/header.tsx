@@ -2,12 +2,11 @@
 import Link from "next/link";
 
 import { ModeToggle } from "./mode-toggle";
-import UserMenu from "./user-menu";
 
 export default function Header() {
   const links = [
     { to: "/", label: "首页" },
-    { to: "/dashboard", label: "控制台" },
+    { to: "/github", label: "GitHub 人员" },
   ] as const;
 
   return (
@@ -24,7 +23,6 @@ export default function Header() {
         </nav>
         <div className="flex items-center gap-2">
           <ModeToggle />
-          <UserMenu />
         </div>
       </div>
       <hr />

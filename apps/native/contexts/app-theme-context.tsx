@@ -1,10 +1,14 @@
-import React, { createContext, useCallback, useContext, useMemo } from "react";
+import type React from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo } from "react";
 import { Uniwind, useUniwind } from "uniwind";
 
-type ThemeName = "light" | "dark";
+export type ThemeName = "light" | "dark";
+
+/** The app does not follow the system appearance; it starts light until the user switches. */
+const DEFAULT_THEME: ThemeName = "light";
 
 type AppThemeContextType = {
-  currentTheme: string;
+  currentTheme: ThemeName;
   isLight: boolean;
   isDark: boolean;
   setTheme: (theme: ThemeName) => void;
@@ -14,33 +18,34 @@ type AppThemeContextType = {
 const AppThemeContext = createContext<AppThemeContextType | undefined>(undefined);
 
 export const AppThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const { theme } = useUniwind();
+  const { theme, hasAdaptiveThemes } = useUniwind();
 
-  const isLight = useMemo(() => {
-    return theme === "light";
-  }, [theme]);
+  // Uniwind starts in adaptive (follow-system) mode; pin an explicit theme once.
+  useEffect(() => {
+    if (hasAdaptiveThemes) {
+      Uniwind.setTheme(DEFAULT_THEME);
+    }
+  }, [hasAdaptiveThemes]);
 
-  const isDark = useMemo(() => {
-    return theme === "dark";
-  }, [theme]);
+  const currentTheme: ThemeName = theme === "dark" ? "dark" : "light";
 
-  const setTheme = useCallback((newTheme: ThemeName) => {
-    Uniwind.setTheme(newTheme);
+  const setTheme = useCallback((next: ThemeName) => {
+    Uniwind.setTheme(next);
   }, []);
 
   const toggleTheme = useCallback(() => {
-    Uniwind.setTheme(theme === "light" ? "dark" : "light");
-  }, [theme]);
+    setTheme(currentTheme === "light" ? "dark" : "light");
+  }, [currentTheme, setTheme]);
 
   const value = useMemo(
     () => ({
-      currentTheme: theme,
-      isLight,
-      isDark,
+      currentTheme,
+      isLight: currentTheme === "light",
+      isDark: currentTheme === "dark",
       setTheme,
       toggleTheme,
     }),
-    [theme, isLight, isDark, setTheme, toggleTheme],
+    [currentTheme, setTheme, toggleTheme]
   );
 
   return <AppThemeContext.Provider value={value}>{children}</AppThemeContext.Provider>;

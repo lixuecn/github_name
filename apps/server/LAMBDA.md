@@ -27,11 +27,8 @@ pnpm --filter server package:lambda
 | NODE_ENV | production |
 | DATABASE_URL | `postgresql://postgres:URL编码后的密码@RDS端点:5432/github_name?sslmode=verify-full` |
 | NODE_EXTRA_CA_CERTS | `/var/runtime/ca-cert.pem` |
-| BETTER_AUTH_SECRET | 至少 32 字符的随机密钥，后续部署保持一致 |
-| BETTER_AUTH_URL | 实际对外 API 根地址，例如 `https://api.example.com`，不要加 `/api/auth` |
 | CORS_ORIGIN | 实际网页来源，例如 `https://example.com`，不要加路径或尾部斜杠 |
-
-可在本地执行 `openssl rand -base64 32` 生成认证密钥，保存到密码管理器。不要将结果提交到 Git。
+| GITHUB_TOKEN | 可选。GitHub 个人访问令牌（无需任何权限），配置后 GitHub API 限额从 60 次/小时提升到 5000 次/小时 |
 
 Lambda 构建通过 env.lambda.ts 在运行时校验上述应用环境变量；不会读取或上传本地 .env。原有 Varlock .env.schema 继续用于本地开发。
 
@@ -73,4 +70,4 @@ Lambda 测试事件应模拟 HTTP API v2，不能使用空的 `{}`：
 }
 ```
 
-预期为 statusCode 200、body `OK`。这只确认后端启动，不确认数据库连接。迁移后还应从前端测试注册、用户名登录及需要 session 的查询，确认 TLS、数据库权限、cookie 和 CORS。
+预期为 statusCode 200、body `OK`。这只确认后端启动，不确认数据库连接。迁移后还应从前端调用访问数据库的接口，确认 TLS、数据库权限和 CORS。

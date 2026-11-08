@@ -44,12 +44,11 @@
     }
   },
   "globalEnv": [
-    "BETTER_AUTH_SECRET",
-    "BETTER_AUTH_URL",
     "CI",
     "CORS_ORIGIN",
     "DATABASE_URL",
     "EXPO_PUBLIC_SERVER_URL",
+    "GITHUB_TOKEN",
     "NEXT_PUBLIC_SERVER_URL",
     "NODE_ENV",
     "VERCEL",

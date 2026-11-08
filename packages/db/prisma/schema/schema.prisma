@@ -8,3 +8,32 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model GithubProfile {
+  id              String   @id @default(cuid())
+  githubId        Int      @unique
+  login           String
+  name            String?
+  bio             String?
+  company         String?
+  location        String?
+  blog            String?
+  twitterUsername String?
+  avatarUrl       String
+  htmlUrl         String
+  publicRepos     Int
+  followers       Int
+  following       Int
+  githubCreatedAt DateTime
+  note            String?
+  tags            String[] @default([])
+  syncedAt        DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([login])
+  @@index([createdAt])
+  @@index([followers])
+  @@index([publicRepos])
+  @@map("github_profile")
+}

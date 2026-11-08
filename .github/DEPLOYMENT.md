@@ -15,7 +15,7 @@ The Worker is named `my-better-t-app-web`. To rename it, update both `name`
 and the `WORKER_SELF_REFERENCE` service in `apps/web/wrangler.jsonc`.
 
 The API service and database must be deployed separately. Set the API's
-`CORS_ORIGIN` and Better Auth trusted origins to allow the deployed Web origin.
+`CORS_ORIGIN` to allow the deployed Web origin.
 Changing `NEXT_PUBLIC_SERVER_URL` requires rebuilding the Web app.
 
 To build locally, run `pnpm --filter web build:cloudflare`.

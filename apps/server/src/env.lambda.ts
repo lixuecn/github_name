@@ -2,10 +2,9 @@ import { z } from "zod";
 
 // Lambda supplies these values at runtime; never bundle a developer's .env.
 const schema = z.object({
-	BETTER_AUTH_SECRET: z.string().min(32),
-	BETTER_AUTH_URL: z.url(),
 	CORS_ORIGIN: z.url(),
 	DATABASE_URL: z.string().min(1),
+	GITHUB_TOKEN: z.string().min(1).optional(),
 	NODE_ENV: z.enum(["development", "production", "test"]).default("production"),
 });
 

@@ -1,21 +1,7 @@
 import type { Context as ApiContext } from "@my-better-t-app/api/context";
-import type { Context as HonoContext } from "hono";
 
-import { db } from "./services";
-import { auth } from "./services";
+export type ServiceDeps = Pick<ApiContext, "db" | "github" | "rateLimiter">;
 
-export type CreateContextOptions = {
-  context: HonoContext;
-};
-
-export async function createContext({ context }: CreateContextOptions): Promise<ApiContext> {
-  const session = await auth.api.getSession({
-    headers: context.req.raw.headers,
-  });
-  return {
-    db,
-    session,
-  };
+export function createContext(deps: ServiceDeps, clientIp: string | null): ApiContext {
+	return { ...deps, clientIp };
 }
-
-export type Context = Awaited<ReturnType<typeof createContext>>;

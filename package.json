@@ -20,7 +20,6 @@
     "db:migrate": "turbo run db:migrate -F @my-better-t-app/db --",
     "env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./apps/native/ && varlock codegen --path ./packages/db/",
     "postinstall": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./apps/native/ && varlock codegen --path ./packages/db/",
-    "auth:generate": "cd apps/server && pnpm run auth:generate",
     "check": "ultracite check",
     "fix": "ultracite fix"
   },

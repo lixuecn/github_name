@@ -1,14 +1,8 @@
-import { protectedProcedure, publicProcedure, router } from "../index";
+import { publicProcedure, router } from "../index";
+import { githubRouter } from "./github";
 
 export const appRouter = router({
-  healthCheck: publicProcedure.query(() => {
-    return "OK";
-  }),
-  privateData: protectedProcedure.query(({ ctx }) => {
-    return {
-      message: "这是受保护的数据",
-      user: ctx.session.user,
-    };
-  }),
+	healthCheck: publicProcedure.query(() => "OK"),
+	github: githubRouter,
 });
 export type AppRouter = typeof appRouter;

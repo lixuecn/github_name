@@ -4,15 +4,27 @@ import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCContext } from "@trpc/tanstack-react-query";
 import { toast } from "sonner";
 
+declare module "@tanstack/react-query" {
+  interface Register {
+    queryMeta: {
+      /** Skip the global error toast; the component renders the error itself. */
+      silent?: boolean;
+    };
+  }
+}
+
 export const { TRPCProvider, useTRPC, useTRPCClient } = createTRPCContext<AppRouter>();
 
 function makeQueryClient() {
   return new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
+        if (query.meta?.silent) {
+          return;
+        }
         toast.error(error.message, {
           action: {
-            label: "retry",
+            label: "重试",
             onClick: () => {
               query.invalidate();
             },
@@ -39,12 +51,6 @@ export function makeTRPCClient() {
     links: [
       httpBatchLink({
         url: `${process.env.NEXT_PUBLIC_SERVER_URL!.replace(/\/$/, "")}/trpc`,
-        fetch(url, options) {
-          return fetch(url, {
-            ...options,
-            credentials: "include",
-          });
-        },
       }),
     ],
   });
