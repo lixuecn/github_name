@@ -3,13 +3,15 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
+    "auth:generate": "varlock run -- pnpm dlx auth@latest generate --config src/services.ts --output ../../packages/db/prisma/schema/auth.prisma --yes",
     "build": "tsdown",
+    "build:lambda": "tsdown --config tsdown.lambda.config.ts",
     "check-types": "tsc --noEmit",
     "compile": "bun build --compile --no-compile-autoload-dotenv --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.mjs",
     "env:generate": "varlock codegen",
-    "auth:generate": "varlock run -- pnpm dlx auth@latest generate --config src/services.ts --output ../../packages/db/prisma/schema/auth.prisma --yes",
+    "package:lambda": "pnpm build:lambda && node scripts/package-lambda.mjs",
+    "start": "node dist/index.mjs",
     "test": "varlock run -- tsx --test --test-concurrency=1 test/*.test.ts"
   },
   "dependencies": {
