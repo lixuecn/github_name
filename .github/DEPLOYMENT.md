@@ -11,7 +11,7 @@ Configure these under repository Settings → Secrets and variables → Actions:
 | Secret | `CLOUDFLARE_ACCOUNT_ID` | Target Cloudflare account ID |
 | Variable | `NEXT_PUBLIC_SERVER_URL` | Public HTTPS URL of the deployed Hono API |
 
-The Worker is named `my-better-t-app-web`. To rename it, update both `name`
+The Worker is named `github-name` (served at `https://github-name.<account-subdomain>.workers.dev`). To rename it, update both `name`
 and the `WORKER_SELF_REFERENCE` service in `apps/web/wrangler.jsonc`.
 
 The API service and database must be deployed separately. Set the API's
