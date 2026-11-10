@@ -1,0 +1,7 @@
+{
+  "extends": "@my-better-t-app/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["bin", "lib"]
+}

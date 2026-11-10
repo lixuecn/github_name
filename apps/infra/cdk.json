@@ -1,0 +1,15 @@
+{
+  "app": "tsx bin/infra.ts",
+  "watch": {
+    "include": [
+      "bin/**",
+      "lib/**"
+    ]
+  },
+  "context": {
+    "githubRepository": "lixuecn/github_name",
+    "githubBranch": "main",
+    "goApiRepositoryName": "go-api",
+    "githubConnectionReady": true
+  }
+}

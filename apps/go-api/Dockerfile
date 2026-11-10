@@ -1,7 +1,8 @@
-# syntax=docker/dockerfile:1
-# Build context: apps/go-api. Multi-arch: docker buildx build --platform linux/arm64 .
+# Build context: apps/go-api. Needs BuildKit (DOCKER_BUILDKIT=1 or docker buildx).
+# Base images come from ECR Public / GCR rather than Docker Hub, avoiding Docker
+# Hub's anonymous pull limits on shared CI (CodeBuild) IPs.
 
-FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS build
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.27.3-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
@@ -10,10 +11,12 @@ ARG TARGETOS TARGETARCH
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build -trimpath -ldflags="-s -w" -o /out/server ./cmd/server
+# Amazon RDS CA bundle, for DATABASE_URL ...?sslmode=verify-full&sslrootcert=/etc/ssl/certs/rds-global-bundle.pem
+RUN wget -q -O /out/rds-global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    && chmod 644 /out/rds-global-bundle.pem
 
 FROM gcr.io/distroless/static-debian12:nonroot
-# Amazon RDS CA bundle, for DATABASE_URL ...?sslmode=verify-full&sslrootcert=/etc/ssl/certs/rds-global-bundle.pem
-ADD --chmod=644 https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /etc/ssl/certs/rds-global-bundle.pem
+COPY --from=build /out/rds-global-bundle.pem /etc/ssl/certs/rds-global-bundle.pem
 COPY --from=build /out/server /server
 USER nonroot:nonroot
 EXPOSE 8080

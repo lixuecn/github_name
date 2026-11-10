@@ -1,0 +1,64 @@
+name: Go API CI
+
+# vet + tests (including DB integration tests against a Postgres service) on
+# PRs and on main. Images are NOT built here: AWS CodeBuild builds and pushes
+# them to ECR on pushes to main (apps/infra, GoApiImageStack), because the AWS
+# Organization's SCP blocks GitHub OIDC and we keep no AWS keys in GitHub.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/go-api/**
+      - packages/db/prisma/migrations/**
+      - .github/workflows/go-api-ci.yml
+  pull_request:
+    paths:
+      - apps/go-api/**
+      - packages/db/prisma/migrations/**
+      - .github/workflows/go-api-ci.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-api-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: apps/go-api/go.mod
+          cache-dependency-path: apps/go-api/go.sum
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race -count=1 ./...
+        env:
+          GO_API_TEST_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci

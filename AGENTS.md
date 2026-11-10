@@ -176,6 +176,7 @@ Most formatting and common issues are automatically fixed by Biome. Run `pnpm ex
 │   │   ├── internal/         # httpapi（路由/中间件）、profiles（校验/仓储）、store（sqlc 生成，勿手改）
 │   │   ├── sqlc.yaml         # schema 读取 Prisma 迁移；Go 侧不改表结构
 │   │   └── Dockerfile        # distroless 镜像，推送 ECR
+│   ├── infra/            # AWS CDK（TypeScript）：GoApiImageStack = ECR + GitHub 连接 + CodeBuild 构建镜像；详见其 README.md
 │   └── fumadocs/         # 文档站（端口 4000），内容位于 content/docs/*.mdx
 ├── packages/
 │   ├── api/              # @my-better-t-app/api：tRPC 实例、publicProcedure、appRouter
