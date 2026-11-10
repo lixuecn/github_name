@@ -140,6 +140,7 @@ Most formatting and common issues are automatically fixed by Biome. Run `pnpm ex
 | 移动端 | Expo 58 + Expo Router、React Native 0.88、HeroUI Native、Uniwind（Tailwind for RN） |
 | 文档站 | Fumadocs（Next.js + MDX） |
 | 后端 | Hono（Node 运行时，`@hono/node-server`），`tsx` 开发、`tsdown` 打包 |
+| Go 数据服务 | Go 1.27、标准库 `net/http`、pgx v5、sqlc（`apps/go-api`，目标部署 ECS Fargate） |
 | API | tRPC v11 + TanStack Query（`@trpc/tanstack-react-query`） |
 | 数据库 | PostgreSQL + Prisma 7（`@prisma/adapter-pg` 驱动适配器） |
 | 环境变量 | Varlock（`.env.schema` 声明 → 生成类型安全的 `env.ts`） |
@@ -170,6 +171,11 @@ Most formatting and common issues are automatically fixed by Biome. Run `pnpm ex
 │   │       ├── services.ts   # 实例化 db（Prisma）
 │   │       ├── context.ts    # 构建 tRPC context
 │   │       └── env.server.ts / env.lambda.ts / env.ts
+│   ├── go-api/           # Go 内部数据服务（端口 8080），读写 github_profile；详见其 README.md
+│   │   ├── cmd/server/       # 入口：HTTP 服务、优雅停机、healthcheck 子命令
+│   │   ├── internal/         # httpapi（路由/中间件）、profiles（校验/仓储）、store（sqlc 生成，勿手改）
+│   │   ├── sqlc.yaml         # schema 读取 Prisma 迁移；Go 侧不改表结构
+│   │   └── Dockerfile        # distroless 镜像，推送 ECR
 │   └── fumadocs/         # 文档站（端口 4000），内容位于 content/docs/*.mdx
 ├── packages/
 │   ├── api/              # @my-better-t-app/api：tRPC 实例、publicProcedure、appRouter
