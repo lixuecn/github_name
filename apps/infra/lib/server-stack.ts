@@ -86,6 +86,10 @@ export class ServerStack extends Stack {
 		const fn = new LambdaFunction(this, "Function", {
 			architecture: Architecture.X86_64,
 			code: Code.fromAsset(props.codeDirectory),
+			// Keep every published version (CDK's default deletes the previous
+			// one after a successful deploy), so `live` can be pointed back at
+			// any earlier version and versions can be compared in the console.
+			currentVersionOptions: { removalPolicy: RemovalPolicy.RETAIN },
 			description: "github-name Hono/tRPC backend (CDK-managed)",
 			environment,
 			functionName: props.functionName,

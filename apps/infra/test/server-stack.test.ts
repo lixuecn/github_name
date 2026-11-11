@@ -75,6 +75,8 @@ test("resolves DATABASE_URL from Secrets Manager and only sets GO_API_URL when g
 test("releases through a live alias with a CodeDeploy 10%/5min canary and alarm rollback", () => {
 	const template = serverTemplate();
 	template.hasResourceProperties("AWS::Lambda::Alias", { Name: "live" });
+	// Published versions are retained so earlier ones stay available for rollback.
+	template.hasResource("AWS::Lambda::Version", { DeletionPolicy: "Retain", UpdateReplacePolicy: "Retain" });
 	template.hasResourceProperties("AWS::CodeDeploy::DeploymentGroup", {
 		AlarmConfiguration: {
 			Alarms: [
