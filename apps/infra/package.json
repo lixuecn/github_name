@@ -6,7 +6,8 @@
     "check-types": "tsc --noEmit",
     "synth": "cdk synth",
     "diff": "cdk diff",
-    "deploy:image": "cdk deploy GoApiImageStack"
+    "deploy:image": "cdk deploy GoApiImageStack",
+    "deploy:service": "cdk deploy GoApiServiceStack"
   },
   "dependencies": {
     "aws-cdk-lib": "2.275.0",

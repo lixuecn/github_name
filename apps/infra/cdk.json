@@ -10,6 +10,26 @@
     "githubRepository": "lixuecn/github_name",
     "githubBranch": "main",
     "goApiRepositoryName": "go-api",
-    "githubConnectionReady": true
+    "githubConnectionReady": true,
+    "network": {
+      "vpcId": "vpc-0de70fcd2f5218ab5",
+      "availabilityZones": [
+        "ap-southeast-2a",
+        "ap-southeast-2b"
+      ],
+      "privateSubnetIds": [
+        "subnet-08257b81d9a524fe5",
+        "subnet-03d8c0f340258ddc9"
+      ],
+      "lambdaSecurityGroupId": "sg-09b7d403e132de8d9",
+      "databaseSecurityGroupId": "sg-063e95c3b3dae9d93",
+      "databasePort": 5432,
+      "privateSubnetRouteTableIds": [
+        "rtb-083f7cd7c5641d2d2",
+        "rtb-083f7cd7c5641d2d2"
+      ]
+    },
+    "goApiDesiredCount": 1,
+    "goApiDatabaseUrlSecretName": "go-api/database-url"
   }
 }

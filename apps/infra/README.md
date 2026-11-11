@@ -5,6 +5,39 @@ AWS 基础设施（CDK，TypeScript），部署到账号 `314068109968` 的 `ap-
 | 栈 | 资源 |
 | --- | --- |
 | `GoApiImageStack` | ECR 仓库 `go-api`（标签不可变、推送时扫描、未打标签镜像 1 天过期、最多保留 50 个）、GitHub 连接（CodeConnections）、CodeBuild 项目 `go-api-image` |
+| `GoApiServiceStack` | ECS 集群与 Fargate 服务 `go-api`（arm64，0.25 vCPU / 0.5 GB）、内网 ALB `go-api-internal`、安全组、RDS 入站规则、日志组 `/ecs/go-api` |
+
+## 服务拓扑（GoApiServiceStack）
+
+```
+Lambda (sg github-name-lambda-sg)
+  ──HTTP 80──▶ 内网 ALB go-api-internal（私有子网 2a/2b，只放行 Lambda 安全组）
+  ──8080────▶ Fargate 任务（私有子网，无公网 IP，经现有 NAT 访问 ECR / Secrets Manager / Logs）
+  ──5432────▶ RDS github-name-dev-db（本栈在其安全组上追加一条入站规则）
+```
+
+- 复用现有默认 VPC `vpc-0de70fcd2f5218ab5` 及其 NAT 网关，网络参数写在 `cdk.json` 的 `context.network`
+- `DATABASE_URL` 来自 Secrets Manager 密钥 `go-api/database-url`（部署前须已存在，栈只引用不创建）
+- 健康检查：ALB 探测 `/health`；容器内 `/server healthcheck`；部署失败自动回滚（circuit breaker）
+- 根文件系统只读；滚动发布时保持 100% 健康副本，旧任务从 ALB 摘除后 15 秒停止
+
+### 部署
+
+```sh
+# 指定要运行的镜像（ECR 中的 commit SHA 标签）
+pnpm --filter infra deploy:service -- -c goApiImageTag=<commit sha>
+```
+
+不带 `goApiImageTag` 部署时服务副本数为 0（只建资源、不跑任务）。副本数由 `cdk.json` 的 `goApiDesiredCount` 控制（默认 1；高可用改为 2）。部署输出 `GoApiUrl`，设为 Lambda 环境变量 `GO_API_URL` 后列表读取即切到 Go 服务（见 `apps/server/LAMBDA.md`）。
+
+### 费用（悉尼，大致）
+
+| 项 | 月费 |
+| --- | --- |
+| 内网 ALB | 约 $18–20（创建即计费） |
+| Fargate arm64 0.25 vCPU / 0.5 GB | 约 $9 / 每个任务 |
+| Secrets Manager 密钥 | $0.40 |
+| NAT 网关 | 已存在，新增的只有少量流量费 |
 
 ## 镜像流水线
 
