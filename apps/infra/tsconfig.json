@@ -3,5 +3,5 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["bin", "lib"]
+  "include": ["bin", "lib", "test"]
 }

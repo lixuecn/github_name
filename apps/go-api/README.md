@@ -1,6 +1,6 @@
 # go-api
 
-Go 编写的内部数据服务，读写 `github_profile` 表，供 Lambda（`apps/server`）在内网调用。目标部署形态：GitHub → Docker 镜像 → ECR → ECS Fargate，前面接 ALB 或 Cloud Map。
+Go 编写的内部数据服务，读写 `github_profile` 表，供 Lambda（`apps/server`）在内网调用。目标部署形态：GitHub → Docker 镜像 → ECR → ECS Fargate，通过 Cloud Map 私有 DNS 发现任务地址，Lambda 直连 TCP 8080。
 
 - 技术选型：标准库 `net/http`（Go 1.22+ 路由）、`pgx/v5` 连接池、`sqlc` 生成类型安全的查询代码、`log/slog` JSON 日志
 - **表结构归 Prisma 管**：sqlc 只读取 `packages/db/prisma/migrations` 下的迁移 SQL，Go 服务不执行任何 DDL
@@ -10,7 +10,7 @@ Go 编写的内部数据服务，读写 `github_profile` 表，供 Lambda（`app
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/health` | 存活检查，不访问数据库（给 ALB / ECS 用） |
+| GET | `/health` | 存活检查，不访问数据库（给 ECS 容器健康检查用） |
 | GET | `/ready` | 就绪检查，`Ping` 数据库，不可用时返回 503 |
 | GET | `/profiles?keyword=&sort=&limit=&cursor=` | 分页列表，语义与 tRPC `github.list` 一致：`sort` 为 `createdAt`（默认）/ `followers` / `publicRepos`，倒序；`limit` 1–50，默认 20；关键字匹配用户名 / 昵称 / 备注（不区分大小写，`%` `_` 按字面匹配）；游标对应的行已删除时从第一页开始 |
 | GET | `/profiles/{id}` | 单条记录，不存在返回 404 |
