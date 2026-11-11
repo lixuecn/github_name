@@ -4,10 +4,12 @@
   "type": "module",
   "scripts": {
     "check-types": "tsc --noEmit",
-    "synth": "cdk synth",
-    "diff": "cdk diff",
     "deploy:image": "cdk deploy GoApiImageStack",
-    "deploy:service": "cdk deploy GoApiServiceStack"
+    "deploy:service": "cdk deploy GoApiServiceStack",
+    "diff": "cdk diff",
+    "synth": "cdk synth",
+    "test": "node --import tsx --test test/*.test.ts",
+    "deploy:server": "pnpm --filter server build:lambda && cdk deploy ServerStack"
   },
   "dependencies": {
     "aws-cdk-lib": "2.275.0",

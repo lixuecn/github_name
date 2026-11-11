@@ -1,7 +1,13 @@
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { App } from "aws-cdk-lib";
 
 import { GoApiImageStack } from "../lib/go-api-image-stack";
 import { type ExistingNetwork, GoApiServiceStack } from "../lib/go-api-service-stack";
+import { ServerStack } from "../lib/server-stack";
+
+const SERVER_BUNDLE_DIR = fileURLToPath(new URL("../../server/dist/lambda", import.meta.url));
 
 const app = new App();
 
@@ -56,3 +62,22 @@ new GoApiServiceStack(app, "GoApiServiceStack", {
   desiredCount: Number(app.node.tryGetContext("goApiDesiredCount") ?? 1),
   databaseUrlSecretName: requiredContext("goApiDatabaseUrlSecretName"),
 });
+
+// ServerStack packages the built backend; skip it (rather than failing every
+// stack) when the bundle is missing. `pnpm --filter infra deploy:server` builds first.
+if (existsSync(`${SERVER_BUNDLE_DIR}/lambda.mjs`)) {
+  new ServerStack(app, "ServerStack", {
+    env,
+    network: networkContext(),
+    functionName: requiredContext("serverFunctionName"),
+    codeDirectory: SERVER_BUNDLE_DIR,
+    httpApiId: requiredContext("serverHttpApiId"),
+    databaseUrlSecretName: requiredContext("serverDatabaseUrlSecretName"),
+    corsOrigin: requiredContext("serverCorsOrigin"),
+    goApiUrl: optionalStringContext("serverGoApiUrl"),
+  });
+} else {
+  process.stderr.write(
+    `ServerStack skipped: no backend bundle at ${SERVER_BUNDLE_DIR} (run \`pnpm --filter server build:lambda\`).\n`
+  );
+}
