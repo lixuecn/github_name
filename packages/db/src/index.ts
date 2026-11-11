@@ -11,3 +11,5 @@ export function createPrismaClient(env: DatabaseConfig) {
 }
 
 export type Database = ReturnType<typeof createPrismaClient>;
+
+export type { GithubProfile } from "../prisma/generated/client";

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
+import { createPrismaProfileReader } from "@my-better-t-app/api/profile-reader";
 import { createRateLimiter } from "@my-better-t-app/api/rate-limit";
 import type { Database } from "@my-better-t-app/db";
 
@@ -20,6 +21,7 @@ before(async () => {
   app = createApp((context) => context.req.header(TEST_IP_HEADER), {
     db,
     github,
+    profiles: createPrismaProfileReader(db),
     rateLimiter: createRateLimiter({ limit: RATE_LIMIT, windowMs: 60_000 }),
   });
 });

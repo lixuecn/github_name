@@ -168,6 +168,22 @@ test("list filters by login, name and note, case-insensitively", async () => {
   assert.deepEqual(none.items, []);
 });
 
+test("list matches LIKE wildcards and backslashes in the keyword literally", async () => {
+  github.add(makeGithubUser({ login: "pct", name: null }));
+  github.add(makeGithubUser({ login: "slash", name: null }));
+  github.add(makeGithubUser({ login: "plain", name: null }));
+  await caller.github.create({ username: "pct", note: "50%_off" });
+  await caller.github.create({ username: "slash", note: "back\\slash" });
+  await caller.github.create({ username: "plain" });
+
+  const logins = async (keyword: string) =>
+    (await caller.github.list({ keyword })).items.map((i) => i.login).sort();
+  assert.deepEqual(await logins("%"), ["pct"]);
+  assert.deepEqual(await logins("_"), ["pct"]);
+  assert.deepEqual(await logins("%_"), ["pct"]);
+  assert.deepEqual(await logins("\\"), ["slash"]);
+});
+
 test("list falls back to the first page when the cursor row was deleted", async () => {
   await seed(3);
   const first = await caller.github.list({ limit: 1 });

@@ -89,41 +89,14 @@ export const githubRouter = router({
         limit: z.number().int().min(1).max(PAGE_SIZE_MAX).default(PAGE_SIZE),
       })
     )
-    .query(async ({ ctx, input }) => {
-      const keyword = input.keyword ?? "";
-      const where = keyword
-        ? {
-            OR: [
-              { login: { contains: keyword, mode: "insensitive" as const } },
-              { name: { contains: keyword, mode: "insensitive" as const } },
-              { note: { contains: keyword, mode: "insensitive" as const } },
-            ],
-          }
-        : {};
-
-      // A cursor whose row was deleted cannot anchor the page; start over instead.
-      const cursorRow = input.cursor
-        ? await ctx.db.githubProfile.findUnique({ where: { id: input.cursor }, select: { id: true } })
-        : null;
-
-      const [rows, total] = await Promise.all([
-        ctx.db.githubProfile.findMany({
-          where,
-          orderBy: [{ [input.sort]: "desc" as const }, { id: "desc" as const }],
-          take: input.limit + 1,
-          ...(cursorRow ? { cursor: { id: cursorRow.id }, skip: 1 } : {}),
-        }),
-        ctx.db.githubProfile.count({ where }),
-      ]);
-
-      const hasMore = rows.length > input.limit;
-      const items = hasMore ? rows.slice(0, input.limit) : rows;
-      return {
-        items,
-        total,
-        nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null,
-      };
-    }),
+    .query(({ ctx, input }) =>
+      ctx.profiles.list({
+        keyword: input.keyword ?? "",
+        sort: input.sort,
+        cursor: input.cursor ?? null,
+        limit: input.limit,
+      })
+    ),
 
   create: rateLimitedProcedure
     .input(z.object({ username: githubUsernameSchema, note: noteSchema.optional() }))

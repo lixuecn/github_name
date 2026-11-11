@@ -204,6 +204,7 @@ Most formatting and common issues are automatically fixed by Biome. Run `pnpm ex
 
 - **依赖方向**：`apps/*` → `packages/api` → `packages/db`。`packages/*` 不依赖 `apps/*`。
 - **工厂 + 注入**：`packages/db` 只导出工厂函数 `createPrismaClient`，真正的实例在 `apps/server/src/services.ts` 中用服务端环境变量创建；新增服务端单例也应放在此处。
+- **列表读取可切到 Go 服务**：`packages/api/src/profile-reader.ts` 的 `ProfileReader` 有 Prisma 与 Go HTTP 两种实现，`apps/server/src/services.ts` 依据 `GO_API_URL` 选择；写操作仍走 Prisma。`apps/server/test/profile-reader-parity.test.ts` 用真实 Go 服务比对两种实现的结果。
 - **端到端类型安全**：前端只以类型方式导入 `AppRouter`（`@my-better-t-app/api/routers/index`），通过 `useTRPC()` + TanStack Query 调用。
 - **无认证**：项目当前不包含登录注册，所有 tRPC 接口均为 `publicProcedure`。
 - **内部包无需构建**：`packages/*` 直接通过 `exports` 指向 `src/*.ts` 源码。

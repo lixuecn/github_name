@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import type { Context } from "@my-better-t-app/api/context";
 import { GithubError, type GithubClient, type GithubUser } from "@my-better-t-app/api/github-client";
+import { createPrismaProfileReader, type ProfileReader } from "@my-better-t-app/api/profile-reader";
 import { createRateLimiter } from "@my-better-t-app/api/rate-limit";
 import { appRouter } from "@my-better-t-app/api/routers/index";
 import { createPrismaClient, type Database } from "@my-better-t-app/db";
@@ -15,6 +16,17 @@ const STATEMENT_SEPARATOR = /;\s*\n/;
  * development database, then applies the Prisma migrations to it. Development
  * data is never touched.
  */
+/** Connection URL of the dedicated test database (see createTestDatabase). */
+export function testDatabaseUrl(): string {
+  const baseUrl = process.env.DATABASE_URL;
+  if (!baseUrl) {
+    throw new Error("DATABASE_URL is required to run server tests");
+  }
+  const url = new URL(baseUrl);
+  url.pathname = `/${url.pathname.slice(1) || "postgres"}_github_test`;
+  return url.toString();
+}
+
 export async function createTestDatabase(): Promise<Database> {
   const baseUrl = process.env.DATABASE_URL;
   if (!baseUrl) {
@@ -120,10 +132,16 @@ export class FakeGithubClient implements GithubClient {
   };
 }
 
-export function makeContext(db: Database, github: GithubClient, clientIp = "203.0.113.1"): Context {
+export function makeContext(
+  db: Database,
+  github: GithubClient,
+  clientIp = "203.0.113.1",
+  profiles: ProfileReader = createPrismaProfileReader(db)
+): Context {
   return {
     db,
     github,
+    profiles,
     rateLimiter: createRateLimiter({ limit: 1000, windowMs: 60_000 }),
     clientIp,
   };

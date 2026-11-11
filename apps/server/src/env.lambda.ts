@@ -5,6 +5,7 @@ const schema = z.object({
 	CORS_ORIGIN: z.url(),
 	DATABASE_URL: z.string().min(1),
 	GITHUB_TOKEN: z.string().min(1).optional(),
+	GO_API_URL: z.url().optional(),
 	NODE_ENV: z.enum(["development", "production", "test"]).default("production"),
 });
 
