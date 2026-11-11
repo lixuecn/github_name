@@ -4,7 +4,7 @@ AWS 基础设施（CDK，TypeScript），部署到账号 `314068109968` 的 `ap-
 
 | 栈 | 资源 |
 | --- | --- |
-| `GoApiImageStack` | ECR 仓库 `go-api`（标签不可变、推送时扫描、未打标签镜像 1 天过期、最多保留 50 个）、GitHub 连接（CodeConnections）、CodeBuild 项目 `go-api-image` |
+| `GoApiImageStack` | ECR 仓库 `go-api`（标签不可变、推送时扫描、未打标签镜像 1 天过期、最多保留 50 个）、GitHub 连接（CodeConnections）、CodeBuild 项目 `go-api-image`；过渡期另有 IAM 用户 `go-api-github-ecr-push`（仅能推/拉 `go-api`，供 GitHub Actions 推镜像，CodeBuild 配额到位后将 `cdk.json` 的 `githubActionsPushUser` 设为 `false` 并删除 GitHub 密钥） |
 | `GoApiServiceStack` | ECS 集群与 Fargate 服务 `go-api`（arm64，0.25 vCPU / 0.5 GB）、Cloud Map 私有命名空间 `github-name.internal` 与服务 `go-api`、安全组、RDS 入站规则、日志组 `/ecs/go-api` |
 | `ServerStack` | 后端 Lambda `github-name-backend`（Hono/tRPC，512 MB，最小权限角色）、别名 `live`、CodeDeploy 灰度（10% → 5 分钟 → 100%）、2 个回滚告警、日志组 |
 

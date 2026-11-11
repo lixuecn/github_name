@@ -51,6 +51,7 @@ new GoApiImageStack(app, "GoApiImageStack", {
   githubBranch: requiredContext("githubBranch"),
   repositoryName,
   githubConnectionReady: booleanContext("githubConnectionReady"),
+  githubActionsPushUser: booleanContext("githubActionsPushUser"),
 });
 
 new GoApiServiceStack(app, "GoApiServiceStack", {

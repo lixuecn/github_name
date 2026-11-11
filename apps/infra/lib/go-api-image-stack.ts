@@ -13,7 +13,7 @@ import {
 } from "aws-cdk-lib/aws-codebuild";
 import { CfnConnection } from "aws-cdk-lib/aws-codeconnections";
 import { Repository, TagMutability, TagStatus } from "aws-cdk-lib/aws-ecr";
-import { PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { PolicyDocument, PolicyStatement, Role, ServicePrincipal, User } from "aws-cdk-lib/aws-iam";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import type { Construct } from "constructs";
 
@@ -35,6 +35,12 @@ export interface GoApiImageStackProps extends StackProps {
    * the build project is only added once this is true (second deploy).
    */
   readonly githubConnectionReady: boolean;
+  /**
+   * Interim path while CodeBuild has no concurrency quota: an IAM user that
+   * can only push/pull this repository, whose access key (created by a human
+   * in the console) GitHub Actions uses. Set false to delete the user.
+   */
+  readonly githubActionsPushUser: boolean;
 }
 
 /**
@@ -88,6 +94,23 @@ export class GoApiImageStack extends Stack {
     if (props.githubConnectionReady) {
       this.addBuildProject(props, connection);
     }
+    if (props.githubActionsPushUser) {
+      this.addGithubActionsPushUser(props.repositoryName);
+    }
+  }
+
+  private addGithubActionsPushUser(repositoryName: string): void {
+    const user = new User(this, "GithubActionsPushUser", {
+      userName: `${repositoryName}-github-ecr-push`,
+    });
+    // ecr:GetAuthorizationToken (account-wide by design) + push/pull and
+    // DescribeImages on this one repository; nothing else in the account.
+    this.repository.grantPullPush(user);
+    this.repository.grant(user, "ecr:DescribeImages");
+    new CfnOutput(this, "GithubActionsPushUserName", {
+      value: user.userName,
+      description: "Create an access key for this user in the IAM console; store it as GitHub secrets",
+    });
   }
 
   private addBuildProject(props: GoApiImageStackProps, connection: CfnConnection): void {
