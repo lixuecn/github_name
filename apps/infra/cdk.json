@@ -35,6 +35,7 @@
     "serverHttpApiId": "ewkw4pdc50",
     "serverDatabaseUrlSecretName": "server/database-url",
     "serverCorsOrigin": "https://github-name.lxue90048.workers.dev",
-    "githubActionsPushUser": true
+    "githubActionsPushUser": true,
+    "serverGoApiUrl": "http://go-api.github-name.internal:8080"
   }
 }
