@@ -1,5 +1,7 @@
 # infra
 
+开发、构建、发布与服务调用流程见 [当前开发流程图](DEVELOPMENT.md)。
+
 AWS 基础设施（CDK，TypeScript），部署到账号 `314068109968` 的 `ap-southeast-2`（组织 SCP 只放行该区域）。
 
 | 栈 | 资源 |
