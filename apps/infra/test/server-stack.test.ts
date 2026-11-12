@@ -57,7 +57,7 @@ test("runs in the existing VPC with the Lambda security group and a least-privil
 	template.resourceCountIs("AWS::IAM::Policy", 0);
 });
 
-test("resolves DATABASE_URL from Secrets Manager and only sets GO_API_URL when given", () => {
+test("without the Go service it reads DATABASE_URL from Secrets Manager; with it, no database access", () => {
 	const env = (template: Template) => {
 		const [fn] = Object.values(template.findResources("AWS::Lambda::Function"));
 		return fn?.Properties.Environment.Variables as Record<string, unknown>;
@@ -69,7 +69,9 @@ test("resolves DATABASE_URL from Secrets Manager and only sets GO_API_URL when g
 	assert.equal("GO_API_URL" in withoutGo, false);
 	assert.equal("BETTER_AUTH_SECRET" in withoutGo, false);
 
-	assert.equal(env(serverTemplate("http://go-api.github-name.internal:8080")).GO_API_URL, "http://go-api.github-name.internal:8080");
+	const withGo = env(serverTemplate("http://go-api.github-name.internal:8080"));
+	assert.equal(withGo.GO_API_URL, "http://go-api.github-name.internal:8080");
+	assert.equal("DATABASE_URL" in withGo, false);
 });
 
 test("releases through a live alias with a CodeDeploy 10%/5min canary and alarm rollback", () => {

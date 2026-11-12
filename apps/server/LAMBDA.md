@@ -25,7 +25,7 @@ pnpm --filter server package:lambda
 | 键 | 值 |
 | --- | --- |
 | NODE_ENV | production |
-| DATABASE_URL | `postgresql://postgres:URL编码后的密码@RDS端点:5432/github_name?sslmode=verify-full` |
+| DATABASE_URL | 仅在未配置 `GO_API_URL` 时需要：`postgresql://postgres:URL编码后的密码@RDS端点:5432/github_name?sslmode=verify-full`。配置了 `GO_API_URL` 时 Lambda 不连数据库，CDK（`ServerStack`）也不会注入它 |
 | NODE_EXTRA_CA_CERTS | `/var/runtime/ca-cert.pem` |
 | CORS_ORIGIN | 实际网页来源，例如 `https://example.com`，不要加路径或尾部斜杠 |
 | GITHUB_TOKEN | 可选。GitHub 个人访问令牌（无需任何权限），配置后 GitHub API 限额从 60 次/小时提升到 5000 次/小时 |

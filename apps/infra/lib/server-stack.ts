@@ -29,7 +29,7 @@ export interface ServerStackProps extends StackProps {
 	readonly codeDirectory: string;
 	/** Existing API Gateway HTTP API that will invoke the `live` alias. */
 	readonly httpApiId: string;
-	/** Secrets Manager secret whose value is the full DATABASE_URL. */
+	/** Secrets Manager secret holding DATABASE_URL; used only when goApiUrl is unset. */
 	readonly databaseUrlSecretName: string;
 	readonly corsOrigin: string;
 	/** Optional internal Go service URL; when set, github.list reads through it. */
@@ -71,14 +71,17 @@ export class ServerStack extends Stack {
 
 		const environment: Record<string, string> = {
 			CORS_ORIGIN: props.corsOrigin,
-			// Resolved by CloudFormation at deploy time; never stored in the repo.
-			DATABASE_URL: SecretValue.secretsManager(props.databaseUrlSecretName).unsafeUnwrap(),
 			NODE_ENV: "production",
 			// Lambda's bundled CA file includes the Amazon RDS roots (sslmode=verify-full).
 			NODE_EXTRA_CA_CERTS: "/var/runtime/ca-cert.pem",
 		};
 		if (props.goApiUrl) {
+			// Every profile read/write goes through the Go service; the function
+			// never connects to the database, so it gets no DATABASE_URL.
 			environment.GO_API_URL = props.goApiUrl;
+		} else {
+			// Resolved by CloudFormation at deploy time; never stored in the repo.
+			environment.DATABASE_URL = SecretValue.secretsManager(props.databaseUrlSecretName).unsafeUnwrap();
 		}
 
 		// The default role gets only CloudWatch Logs and VPC ENI permissions
