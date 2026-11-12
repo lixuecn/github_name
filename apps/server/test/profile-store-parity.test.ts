@@ -1,15 +1,10 @@
 import assert from "node:assert/strict";
-import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
-import { createServer } from "node:net";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { after, before, test } from "node:test";
-import { fileURLToPath } from "node:url";
 
-import { createGoApiProfileReader, type ProfileListInput } from "@my-better-t-app/api/profile-reader";
+import { createGoApiProfileStore, type ProfileListInput } from "@my-better-t-app/api/profile-store";
 import type { Database } from "@my-better-t-app/db";
 
+import { goApiSkipReason, type RunningGoApi, startGoApi } from "./go-api-server";
 import {
   createCaller,
   createTestDatabase,
@@ -20,65 +15,14 @@ import {
 } from "./helpers";
 
 // Runs github.list through Prisma and through the real Go service against the
-// same test database, and requires identical results. The Go service lives in
-// its own repository: point GO_API_DIR at a checkout (default: a `go-api`
-// directory next to this repository). Skipped when the checkout or the Go
-// toolchain is missing.
+// same test database, and requires identical results (exact values, including
+// timestamps, so it compares stored data rather than just shapes). Skipped
+// when no go-api checkout or Go toolchain is available.
 
-const GO_API_DIR =
-  process.env.GO_API_DIR ?? fileURLToPath(new URL("../../../../go-api", import.meta.url));
-const READY_TIMEOUT_MS = 20_000;
-const READY_POLL_MS = 100;
-
-function goAvailable(): boolean {
-  try {
-    execFileSync("go", ["version"], { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = createServer();
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      server.close(() =>
-        typeof address === "object" && address ? resolve(address.port) : reject(new Error("no port"))
-      );
-    });
-  });
-}
-
-async function waitForReady(baseUrl: string): Promise<void> {
-  const deadline = Date.now() + READY_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    try {
-      if ((await fetch(`${baseUrl}/ready`)).ok) {
-        return;
-      }
-    } catch {
-      // not listening yet
-    }
-    await new Promise((resolve) => setTimeout(resolve, READY_POLL_MS));
-  }
-  throw new Error(`go-api did not become ready at ${baseUrl}`);
-}
-
-function skipReason(): string | false {
-  if (!existsSync(join(GO_API_DIR, "go.mod"))) {
-    return `go-api checkout not found at ${GO_API_DIR} (set GO_API_DIR)`;
-  }
-  return goAvailable() ? false : "Go toolchain not installed";
-}
-
-const skip = skipReason();
+const skip = goApiSkipReason();
 
 let db: Database;
-let goApi: ChildProcess | undefined;
-let buildDir: string | undefined;
+let goApi: RunningGoApi | undefined;
 let prismaCaller: ReturnType<typeof createCaller>;
 let goCaller: ReturnType<typeof createCaller>;
 
@@ -88,27 +32,12 @@ before(async () => {
   }
   db = await createTestDatabase();
   await db.githubProfile.deleteMany();
-
-  buildDir = mkdtempSync(join(tmpdir(), "go-api-parity-"));
-  const binary = join(buildDir, "go-api");
-  execFileSync("go", ["build", "-o", binary, "./cmd/server"], {
-    cwd: GO_API_DIR,
-    env: { ...process.env, CGO_ENABLED: "0" },
-    stdio: "inherit",
-  });
-
-  const port = await freePort();
-  const baseUrl = `http://127.0.0.1:${port}`;
-  goApi = spawn(binary, [], {
-    env: { PATH: process.env.PATH, PORT: String(port), DATABASE_URL: testDatabaseUrl() },
-    stdio: ["ignore", "ignore", "inherit"],
-  });
-  await waitForReady(baseUrl);
+  goApi = await startGoApi(testDatabaseUrl());
 
   const github = new FakeGithubClient();
   prismaCaller = createCaller(makeContext(db, github));
   goCaller = createCaller(
-    makeContext(db, github, "203.0.113.1", createGoApiProfileReader({ baseUrl }))
+    makeContext(db, github, "203.0.113.1", createGoApiProfileStore({ baseUrl: goApi.baseUrl }))
   );
 
   // Ties in followers / repos exercise the id tiebreaker; notes contain LIKE
@@ -132,10 +61,7 @@ before(async () => {
 });
 
 after(async () => {
-  goApi?.kill("SIGTERM");
-  if (buildDir) {
-    rmSync(buildDir, { recursive: true, force: true });
-  }
+  goApi?.stop();
   await db?.$disconnect();
 });
 

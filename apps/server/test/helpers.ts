@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import type { Context } from "@my-better-t-app/api/context";
 import { GithubError, type GithubClient, type GithubUser } from "@my-better-t-app/api/github-client";
-import { createPrismaProfileReader, type ProfileReader } from "@my-better-t-app/api/profile-reader";
+import { createPrismaProfileStore, type ProfileStore } from "@my-better-t-app/api/profile-store";
 import { createRateLimiter } from "@my-better-t-app/api/rate-limit";
 import { appRouter } from "@my-better-t-app/api/routers/index";
 import { createPrismaClient, type Database } from "@my-better-t-app/db";
@@ -136,10 +136,9 @@ export function makeContext(
   db: Database,
   github: GithubClient,
   clientIp = "203.0.113.1",
-  profiles: ProfileReader = createPrismaProfileReader(db)
+  profiles: ProfileStore = createPrismaProfileStore(db)
 ): Context {
   return {
-    db,
     github,
     profiles,
     rateLimiter: createRateLimiter({ limit: 1000, windowMs: 60_000 }),

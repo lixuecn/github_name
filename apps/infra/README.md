@@ -21,7 +21,7 @@ API Gateway HTTP API ewkw4pdc50 ──▶ github-name-backend:live
 - 运行在现有 VPC 私有子网，复用 Lambda 安全组 `sg-09b7…`（RDS / Go 服务的放行规则不变）
 - `DATABASE_URL` 部署时从 Secrets Manager `server/database-url` 解析；`CORS_ORIGIN` 等在 `cdk.json`（`server*` 键）
 - 回滚告警：`github-name-backend-errors`（1 分钟内错误 ≥ 3）、`github-name-backend-p95-duration`（p95 > 3 秒，连续 2 分钟）
-- 设置 `-c serverGoApiUrl=http://go-api.github-name.internal:8080`（或写进 `cdk.json`）即让列表读取走 Go 服务
+- 设置 `-c serverGoApiUrl=http://go-api.github-name.internal:8080`（或写进 `cdk.json`）即让后端的所有人员数据读写都走 Go 服务
 
 ```sh
 pnpm --filter infra deploy:server     # 构建后端 bundle 并部署；代码或配置变化 → 新版本 → 自动灰度
@@ -71,7 +71,7 @@ Lambda (sg github-name-lambda-sg)
 pnpm --filter infra deploy:service -- -c goApiImageTag=<commit sha>
 ```
 
-不带 `goApiImageTag` 部署时服务副本数为 0（只建资源、不跑任务）。副本数由 `cdk.json` 的 `goApiDesiredCount` 控制（默认 1；高可用改为 2）。部署输出 `GoApiUrl`，设为 Lambda 环境变量 `GO_API_URL` 后列表读取即切到 Go 服务（见 `apps/server/LAMBDA.md`）。
+不带 `goApiImageTag` 部署时服务副本数为 0（只建资源、不跑任务）。副本数由 `cdk.json` 的 `goApiDesiredCount` 控制（默认 1；高可用改为 2）。部署输出 `GoApiUrl`，设为 Lambda 环境变量 `GO_API_URL` 后人员数据的读写即切到 Go 服务（见 `apps/server/LAMBDA.md`）。
 
 ### 从已有 ALB 切换
 

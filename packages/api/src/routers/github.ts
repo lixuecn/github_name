@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { GithubError, type GithubUser } from "../github-client";
 import { publicProcedure, rateLimitedProcedure, router } from "../index";
+import { ProfileConflictError, ProfileNotFoundError } from "../profile-store";
 import {
   githubSortSchema,
   githubUsernameSchema,
@@ -34,31 +35,12 @@ function toTrpcError(error: unknown, messages: GithubErrorMessages): TRPCError {
   return new TRPCError({ code: "BAD_GATEWAY", message: "查询失败，请稍后重试", cause: error });
 }
 
-function hasPrismaCode(error: unknown, code: string): boolean {
-  return typeof error === "object" && error !== null && "code" in error && error.code === code;
-}
-
-const isUniqueViolation = (error: unknown) => hasPrismaCode(error, "P2002");
-const isRecordMissing = (error: unknown) => hasPrismaCode(error, "P2025");
-
-/** GitHub-owned columns; system fields (note, tags) are never included. */
-function profileDataFromGithub(user: GithubUser) {
-  return {
-    githubId: user.githubId,
-    login: user.login,
-    name: user.name,
-    bio: user.bio,
-    company: user.company,
-    location: user.location,
-    blog: user.blog,
-    twitterUsername: user.twitterUsername,
-    avatarUrl: user.avatarUrl,
-    htmlUrl: user.htmlUrl,
-    publicRepos: user.publicRepos,
-    followers: user.followers,
-    following: user.following,
-    githubCreatedAt: user.githubCreatedAt,
-  };
+/** Turns a store "unknown id" into the user-facing NOT_FOUND; rethrows anything else. */
+function rethrowNotFound(error: unknown): never {
+  if (error instanceof ProfileNotFoundError) {
+    throw new TRPCError({ code: "NOT_FOUND", message: PROFILE_NOT_FOUND, cause: error });
+  }
+  throw error;
 }
 
 const idSchema = z.string().min(1);
@@ -73,10 +55,7 @@ export const githubRouter = router({
       } catch (error) {
         throw toTrpcError(error, { notFound: "未找到该 GitHub 用户" });
       }
-      const existing = await ctx.db.githubProfile.findUnique({
-        where: { githubId: user.githubId },
-        select: { id: true },
-      });
+      const existing = await ctx.profiles.findByGithubId(user.githubId);
       return { ...user, existsInSystem: existing !== null };
     }),
 
@@ -109,25 +88,15 @@ export const githubRouter = router({
         throw toTrpcError(error, { notFound: "未找到该 GitHub 用户" });
       }
 
-      const existing = await ctx.db.githubProfile.findUnique({
-        where: { githubId: user.githubId },
-        select: { id: true },
-      });
-      if (existing) {
+      if (await ctx.profiles.findByGithubId(user.githubId)) {
         throw new TRPCError({ code: "CONFLICT", message: PROFILE_EXISTS });
       }
 
       try {
-        return await ctx.db.githubProfile.create({
-          data: {
-            ...profileDataFromGithub(user),
-            note: input.note ?? null,
-            tags: [],
-            syncedAt: new Date(),
-          },
-        });
+        return await ctx.profiles.create({ ...user, note: input.note ?? null });
       } catch (error) {
-        if (isUniqueViolation(error)) {
+        // A concurrent create can still win the race between check and insert.
+        if (error instanceof ProfileConflictError) {
           throw new TRPCError({ code: "CONFLICT", message: PROFILE_EXISTS, cause: error });
         }
         throw error;
@@ -143,28 +112,22 @@ export const githubRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const data: { note?: string | null; tags?: string[] } = {};
+      const patch: { note?: string | null; tags?: string[] } = {};
       if (input.note !== undefined) {
-        data.note = input.note;
+        patch.note = input.note;
       }
       if (input.tags !== undefined) {
-        data.tags = input.tags;
+        patch.tags = input.tags;
       }
       try {
-        return await ctx.db.githubProfile.update({ where: { id: input.id }, data });
+        return await ctx.profiles.update(input.id, patch);
       } catch (error) {
-        if (isRecordMissing(error)) {
-          throw new TRPCError({ code: "NOT_FOUND", message: PROFILE_NOT_FOUND, cause: error });
-        }
-        throw error;
+        return rethrowNotFound(error);
       }
     }),
 
   sync: rateLimitedProcedure.input(z.object({ id: idSchema })).mutation(async ({ ctx, input }) => {
-    const profile = await ctx.db.githubProfile.findUnique({
-      where: { id: input.id },
-      select: { githubId: true },
-    });
+    const profile = await ctx.profiles.get(input.id);
     if (!profile) {
       throw new TRPCError({ code: "NOT_FOUND", message: PROFILE_NOT_FOUND });
     }
@@ -177,27 +140,18 @@ export const githubRouter = router({
     }
 
     try {
-      return await ctx.db.githubProfile.update({
-        where: { id: input.id },
-        data: { ...profileDataFromGithub(user), syncedAt: new Date() },
-      });
+      return await ctx.profiles.syncGithub(input.id, user);
     } catch (error) {
-      if (isRecordMissing(error)) {
-        throw new TRPCError({ code: "NOT_FOUND", message: PROFILE_NOT_FOUND, cause: error });
-      }
-      throw error;
+      return rethrowNotFound(error);
     }
   }),
 
   delete: rateLimitedProcedure.input(z.object({ id: idSchema })).mutation(async ({ ctx, input }) => {
     try {
-      await ctx.db.githubProfile.delete({ where: { id: input.id } });
+      await ctx.profiles.delete(input.id);
       return { id: input.id };
     } catch (error) {
-      if (isRecordMissing(error)) {
-        throw new TRPCError({ code: "NOT_FOUND", message: PROFILE_NOT_FOUND, cause: error });
-      }
-      throw error;
+      return rethrowNotFound(error);
     }
   }),
 });

@@ -199,8 +199,8 @@ Most formatting and common issues are automatically fixed by Biome. Run `pnpm ex
 
 - **依赖方向**：`apps/*` → `packages/api` → `packages/db`。`packages/*` 不依赖 `apps/*`。
 - **工厂 + 注入**：`packages/db` 只导出工厂函数 `createPrismaClient`，真正的实例在 `apps/server/src/services.ts` 中用服务端环境变量创建；新增服务端单例也应放在此处。
-- **列表读取可切到 Go 服务**：`packages/api/src/profile-reader.ts` 的 `ProfileReader` 有 Prisma 与 Go HTTP 两种实现，`apps/server/src/services.ts` 依据 `GO_API_URL` 选择；写操作仍走 Prisma。`apps/server/test/profile-reader-parity.test.ts` 用真实 Go 服务比对两种实现的结果（需要本地检出 Go 仓库，默认 `../go-api`，可用 `GO_API_DIR` 指定；缺失时跳过）。
-- **Go 服务在独立仓库**：表结构仍归本仓库的 Prisma 管，Go 仓库的 `schema/migrations/` 是只读副本；**新增 Prisma 迁移后要到 Go 仓库运行 `make schema && make sqlc`**。Go 的 `/profiles` 接口与本仓库 `profile-reader.ts` 的 zod schema 需同步修改。
+- **人员数据经 `ProfileStore` 读写**：tRPC 路由不直接用 Prisma，而是调用 `ctx.profiles`（`packages/api/src/profile-store.ts`），它有 Prisma 与 Go HTTP 两种实现，`apps/server/src/services.ts` 依据 `GO_API_URL` 选择（生产走 Go，本地默认 Prisma）。路由测试写成共享套件 `apps/server/test/github-router-suite.ts`，`github-router.test.ts` 用 Prisma 跑、`github-router-go.test.ts` 用真实 Go 服务跑（需要本地检出 Go 仓库，默认 `../go-api`，可用 `GO_API_DIR` 指定；缺失时跳过）。
+- **Go 服务在独立仓库**：表结构仍归本仓库的 Prisma 管，Go 仓库的 `schema/migrations/` 是只读副本；**新增 Prisma 迁移后要到 Go 仓库运行 `make schema && make sqlc`**。Go 的接口与本仓库 `profile-store.ts`（Go 实现与 zod schema）需同步修改。
 - **端到端类型安全**：前端只以类型方式导入 `AppRouter`（`@my-better-t-app/api/routers/index`），通过 `useTRPC()` + TanStack Query 调用。
 - **无认证**：项目当前不包含登录注册，所有 tRPC 接口均为 `publicProcedure`。
 - **内部包无需构建**：`packages/*` 直接通过 `exports` 指向 `src/*.ts` 源码。

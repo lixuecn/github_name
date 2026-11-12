@@ -60,13 +60,12 @@ flowchart LR
         Alias --> Hono[Hono / tRPC 后端]
         Hono -.->|DNS 查询| Map[Cloud Map 私有 DNS]
         Map -.->|返回任务私有 IP| Hono
-        Hono -->|列表读取: HTTP 8080| Go[Go API / ECS Fargate]
+        Hono -->|全部人员数据读写: HTTP 8080| Go[Go API / ECS Fargate]
         Go -->|pgx / SQL| DB[(RDS PostgreSQL)]
-        Hono -->|写操作及其他 Prisma 查询| DB
     end
 ```
 
-`serverGoApiUrl` 当前配置为 `http://go-api.github-name.internal:8080`，部署时映射为 Lambda 的 `GO_API_URL`。未设置该值时，列表读取也使用 Prisma。Cloud Map 只负责发现地址，业务请求由 Lambda 直接发到 Go 任务，不经过 ALB。
+`serverGoApiUrl` 当前配置为 `http://go-api.github-name.internal:8080`，部署时映射为 Lambda 的 `GO_API_URL`。未设置该值时，后端改用 Prisma 直连数据库。Cloud Map 只负责发现地址，业务请求由 Lambda 直接发到 Go 任务，不经过 ALB。
 
 API Gateway 是否已从旧函数切到 `github-name-backend:live`，须在 AWS 检查；迁移步骤见 [基础设施 README](README.md)。
 
