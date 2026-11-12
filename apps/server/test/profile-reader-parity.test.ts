@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -19,11 +19,14 @@ import {
   testDatabaseUrl,
 } from "./helpers";
 
-// Runs github.list through Prisma and through the real Go service (apps/go-api)
-// against the same test database, and requires identical results. Skipped
-// when the Go toolchain is not installed.
+// Runs github.list through Prisma and through the real Go service against the
+// same test database, and requires identical results. The Go service lives in
+// its own repository: point GO_API_DIR at a checkout (default: a `go-api`
+// directory next to this repository). Skipped when the checkout or the Go
+// toolchain is missing.
 
-const GO_API_DIR = fileURLToPath(new URL("../../go-api", import.meta.url));
+const GO_API_DIR =
+  process.env.GO_API_DIR ?? fileURLToPath(new URL("../../../../go-api", import.meta.url));
 const READY_TIMEOUT_MS = 20_000;
 const READY_POLL_MS = 100;
 
@@ -64,7 +67,14 @@ async function waitForReady(baseUrl: string): Promise<void> {
   throw new Error(`go-api did not become ready at ${baseUrl}`);
 }
 
-const skip = goAvailable() ? false : "Go toolchain not installed";
+function skipReason(): string | false {
+  if (!existsSync(join(GO_API_DIR, "go.mod"))) {
+    return `go-api checkout not found at ${GO_API_DIR} (set GO_API_DIR)`;
+  }
+  return goAvailable() ? false : "Go toolchain not installed";
+}
+
+const skip = skipReason();
 
 let db: Database;
 let goApi: ChildProcess | undefined;

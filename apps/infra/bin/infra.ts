@@ -47,8 +47,9 @@ const repositoryName = requiredContext("goApiRepositoryName");
 
 new GoApiImageStack(app, "GoApiImageStack", {
   env,
-  githubRepository: requiredContext("githubRepository"),
+  githubRepository: requiredContext("goApiGithubRepository"),
   githubBranch: requiredContext("githubBranch"),
+  sourceDir: requiredContext("goApiSourceDir"),
   repositoryName,
   githubConnectionReady: booleanContext("githubConnectionReady"),
   githubActionsPushUser: booleanContext("githubActionsPushUser"),

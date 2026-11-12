@@ -20,12 +20,17 @@ import type { Construct } from "constructs";
 const UNTAGGED_IMAGE_EXPIRY_DAYS = 1;
 const MAX_TAGGED_IMAGES = 50;
 const BUILD_TIMEOUT_MINUTES = 20;
-const GO_API_DIR = "apps/go-api";
+const TRAILING_SLASHES = /\/+$/;
 const GO_IMAGE = "public.ecr.aws/docker/library/golang:1.27.3-alpine";
 
 export interface GoApiImageStackProps extends StackProps {
-  /** "owner/repo" on GitHub. */
+  /** "owner/repo" on GitHub holding the Go service source. */
   readonly githubRepository: string;
+  /**
+   * Directory of the Go module inside that repository ("." when the module is
+   * the repository root). Builds trigger only for pushes touching it.
+   */
+  readonly sourceDir: string;
   /** Pushes to this branch build and push an image. */
   readonly githubBranch: string;
   readonly repositoryName: string;
@@ -115,6 +120,7 @@ export class GoApiImageStack extends Stack {
 
   private addBuildProject(props: GoApiImageStackProps, connection: CfnConnection): void {
     const [owner, repo] = props.githubRepository.split("/");
+    const sourceDir = props.sourceDir.replace(TRAILING_SLASHES, "") || ".";
     if (!(owner && repo)) {
       throw new Error(`githubRepository must be "owner/repo", got "${props.githubRepository}"`);
     }
@@ -154,9 +160,11 @@ export class GoApiImageStack extends Stack {
         reportBuildStatus: true,
         webhook: true,
         webhookFilters: [
-          FilterGroup.inEventOf(EventAction.PUSH)
-            .andBranchIs(props.githubBranch)
-            .andFilePathIs(`^${GO_API_DIR}/.*`),
+          sourceDir === "."
+            ? FilterGroup.inEventOf(EventAction.PUSH).andBranchIs(props.githubBranch)
+            : FilterGroup.inEventOf(EventAction.PUSH)
+                .andBranchIs(props.githubBranch)
+                .andFilePathIs(`^${sourceDir}/.*`),
         ],
       }),
       environment: {
@@ -168,7 +176,7 @@ export class GoApiImageStack extends Stack {
           REPOSITORY_URI: { value: this.repository.repositoryUri },
           REPOSITORY_NAME: { value: this.repository.repositoryName },
           GO_IMAGE: { value: GO_IMAGE },
-          GO_API_DIR: { value: GO_API_DIR },
+          GO_API_DIR: { value: sourceDir },
         },
       },
       cache: Cache.local(LocalCacheMode.DOCKER_LAYER),

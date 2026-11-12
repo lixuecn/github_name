@@ -14,8 +14,8 @@ flowchart TD
     WebCI --> WebBuild[生成 Prisma Client / 构建 Next.js]
     WebBuild --> CF[自动部署到 Cloudflare Workers]
 
-    Change --> Go[Go API: apps/go-api]
-    Go --> GoCI[PR / main / feat/go-api 触发 Go API CI]
+    Change --> Go[Go API: 独立仓库 go-api]
+    Go --> GoCI[PR / main 触发 go-api 仓库 CI]
     GoCI --> Test[go vet / race 测试 / PostgreSQL 集成测试]
     Test --> Event{是否为 push 或手动触发}
     Event -->|PR: 只测试| Review[检查结果 / 代码评审]

@@ -123,7 +123,7 @@ export type GoApiProfileReaderOptions = {
   timeoutMs?: number;
 };
 
-/** Reads through the internal Go service (apps/go-api, GET /profiles). */
+/** Reads through the internal Go service (separate go-api repository, GET /profiles). */
 export function createGoApiProfileReader(options: GoApiProfileReaderOptions): ProfileReader {
   const fetchImpl = options.fetch ?? fetch;
   const timeoutMs = options.timeoutMs ?? DEFAULT_GO_API_TIMEOUT_MS;

@@ -29,7 +29,7 @@ pnpm --filter server package:lambda
 | NODE_EXTRA_CA_CERTS | `/var/runtime/ca-cert.pem` |
 | CORS_ORIGIN | 实际网页来源，例如 `https://example.com`，不要加路径或尾部斜杠 |
 | GITHUB_TOKEN | 可选。GitHub 个人访问令牌（无需任何权限），配置后 GitHub API 限额从 60 次/小时提升到 5000 次/小时 |
-| GO_API_URL | 可选。内部 Go 服务（`apps/go-api`）地址，当前使用 Cloud Map 私有 DNS：`http://go-api.github-name.internal:8080`。配置后 `github.list` 改为通过 Go 服务读取，写操作仍直连数据库；不配置则全部走 Prisma。Lambda 需位于关联私有命名空间的 VPC，VPC DNS 须开启，Lambda 出站与任务入站须放行 TCP 8080 |
+| GO_API_URL | 可选。内部 Go 服务（独立仓库 `go-api`）地址，当前使用 Cloud Map 私有 DNS：`http://go-api.github-name.internal:8080`。配置后 `github.list` 改为通过 Go 服务读取，写操作仍直连数据库；不配置则全部走 Prisma。Lambda 需位于关联私有命名空间的 VPC，VPC DNS 须开启，Lambda 出站与任务入站须放行 TCP 8080 |
 
 Lambda 构建通过 env.lambda.ts 在运行时校验上述应用环境变量；不会读取或上传本地 .env。原有 Varlock .env.schema 继续用于本地开发。
 

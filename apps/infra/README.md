@@ -89,13 +89,13 @@ pnpm --filter infra deploy:service -- -c goApiImageTag=<commit sha>
 ## 镜像流水线
 
 ```
-push 到 main（改动涉及 apps/go-api/**）
+push 到 go-api 仓库的 main（`cdk.json`：`goApiGithubRepository` + `goApiSourceDir`）
   → CodeBuild 通过 GitHub 连接拉代码（arm64 原生构建）
   → go vet + go test
   → docker build → 推送 ECR，标签 = commit SHA（已存在则跳过）
 ```
 
-- PR 与 main 的测试由 GitHub Actions 跑（`.github/workflows/go-api-ci.yml`，含 Postgres 集成测试），不需要任何 AWS 凭证
+- Go 源码在独立仓库 `go-api`；PR 与 main 的测试和（过渡期）推镜像由该仓库的 GitHub Actions（`.github/workflows/ci.yml`）完成
 - 为什么不用 GitHub Actions 直接推 ECR：组织 SCP 禁止创建 IAM OIDC 提供方，而我们不想把长期 AWS 密钥存进 GitHub。CodeBuild 在 AWS 内部运行，用自己的 IAM 角色推镜像，GitHub 里不保存任何 AWS 凭证
 - 基础镜像来自 ECR Public 与 GCR，避开 Docker Hub 对 CodeBuild 共享 IP 的匿名拉取限流
 
