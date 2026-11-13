@@ -12,12 +12,13 @@ const bundleDir = mkdtempSync(join(tmpdir(), "server-bundle-"));
 writeFileSync(join(bundleDir, "lambda.mjs"), "export const handler = async () => ({});\n");
 after(() => rmSync(bundleDir, { force: true, recursive: true }));
 
-function serverTemplate(goApiUrl?: string): Template {
+function serverTemplate(goApiUrl?: string, extraRollbackAlarmNames?: string[]): Template {
 	const stack = new ServerStack(new App(), "TestServer", {
 		codeDirectory: bundleDir,
 		corsOrigin: "https://example.workers.dev",
 		databaseUrlSecretName: "server/database-url",
 		env: { account: "123456789012", region: "ap-southeast-2" },
+		extraRollbackAlarmNames,
 		functionName: "github-name-backend",
 		goApiUrl,
 		httpApiId: "abc123",
@@ -108,6 +109,16 @@ test("lets only the existing HTTP API invoke the alias", () => {
 		Principal: "apigateway.amazonaws.com",
 		SourceArn: {
 			"Fn::Join": ["", Match.arrayWith([Match.stringLikeRegexp(":execute-api:ap-southeast-2:123456789012:abc123/\\*$")])],
+		},
+	});
+});
+
+test("adds extra alarms (e.g. the Synthetics API check) to the canary rollback", () => {
+	const template = serverTemplate(undefined, ["github-name-api-check"]);
+	template.hasResourceProperties("AWS::CodeDeploy::DeploymentGroup", {
+		AlarmConfiguration: {
+			Alarms: Match.arrayWith([{ Name: "github-name-api-check" }]),
+			Enabled: true,
 		},
 	});
 });

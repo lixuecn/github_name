@@ -9,7 +9,8 @@
     "diff": "cdk diff",
     "synth": "cdk synth",
     "test": "node --import tsx --test test/*.test.ts",
-    "deploy:server": "pnpm --filter server build:lambda && cdk deploy ServerStack"
+    "deploy:server": "pnpm --filter server build:lambda && cdk deploy ServerStack",
+    "deploy:monitoring": "cdk deploy MonitoringStack"
   },
   "dependencies": {
     "aws-cdk-lib": "2.275.0",

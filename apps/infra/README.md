@@ -9,6 +9,7 @@ AWS 基础设施（CDK，TypeScript），部署到账号 `314068109968` 的 `ap-
 | `GoApiImageStack` | ECR 仓库 `go-api`（标签不可变、推送时扫描、未打标签镜像 1 天过期、最多保留 50 个）、GitHub 连接（CodeConnections）、CodeBuild 项目 `go-api-image`；过渡期另有 IAM 用户 `go-api-github-ecr-push`（仅能推/拉 `go-api`，供 GitHub Actions 推镜像，CodeBuild 配额到位后将 `cdk.json` 的 `githubActionsPushUser` 设为 `false` 并删除 GitHub 密钥） |
 | `GoApiServiceStack` | ECS 集群与 Fargate 服务 `go-api`（arm64，0.25 vCPU / 0.5 GB）、Cloud Map 私有命名空间 `github-name.internal` 与服务 `go-api`、安全组、RDS 入站规则、日志组 `/ecs/go-api` |
 | `ServerStack` | 后端 Lambda `github-name-backend`（Hono/tRPC，512 MB，最小权限角色）、别名 `live`、CodeDeploy 灰度（10% → 5 分钟 → 100%）、2 个回滚告警、日志组 |
+| `MonitoringStack` | 巡检：Lambda `github-name-api-check`（每 10 分钟）与 `github-name-web-check`（每 15 分钟）、EventBridge 定时规则、两条失败告警 |
 
 ## 后端 Lambda 与生产灰度（ServerStack）
 
@@ -138,3 +139,17 @@ pnpm --filter infra deploy:image -- -c githubConnectionReady=true
 - ECR：存储约 $0.10/GB·月，每个镜像约 10 MB
 - CodeBuild `arm1.small`：按构建分钟计费，每次构建约 2–4 分钟
 - CodeConnections：免费
+
+## 巡检（MonitoringStack）
+
+| 巡检 | 频率 | 检查内容 |
+| --- | --- | --- |
+| `github-name-api-check` | 每 10 分钟 | `GET /trpc/healthCheck` 返回 `OK`；`github.list` 返回结构正确（API Gateway → Lambda → go-api → RDS 整条链路） |
+| `github-name-web-check` | 每 15 分钟 | `/github` 页面 200、HTML、标题为「GitHub 人员」；API 对网站域名的 CORS 预检通过（浏览器能调 API） |
+
+- 实现：`health-checks/index.mjs`，一个 256 MB 的 Lambda（不在 VPC 内，走公网，与真实用户一致），由 EventBridge 定时触发；任一步失败即函数报错，对应告警（与函数同名）变为 ALARM；不重试
+- **`github-name-api-check` 告警也是后端 Lambda 灰度发布的回滚条件之一**（`cdk.json` 的 `serverExtraRollbackAlarmNames`）
+- 未使用 CloudWatch Synthetics：其浏览器运行需约 1 GB Lambda 内存，本账号 Lambda 内存上限为 512 MB。因此网页巡检不执行前端 JS（无法确认列表渲染），以 CORS 预检代替
+- 查看：CloudWatch → 告警（搜索 `github-name-`）；每次运行的步骤与耗时在日志组 `/aws/lambda/github-name-api-check`、`/aws/lambda/github-name-web-check`
+- 手动跑一次：`aws lambda invoke --function-name github-name-api-check /dev/stdout`
+- 频率与目标在 `cdk.json`：`monitoringApiCheckEveryMinutes`、`monitoringWebCheckEveryMinutes`、`monitoringApiBaseUrl`、`monitoringWebUrl`、`monitoringWebTitle`；部署 `pnpm --filter infra deploy:monitoring`

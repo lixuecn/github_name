@@ -37,6 +37,14 @@
     "serverDatabaseUrlSecretName": "server/database-url",
     "serverCorsOrigin": "https://github-name.lxue90048.workers.dev",
     "githubActionsPushUser": true,
-    "serverGoApiUrl": "http://go-api.github-name.internal:8080"
+    "serverGoApiUrl": "http://go-api.github-name.internal:8080",
+    "monitoringApiBaseUrl": "https://ewkw4pdc50.execute-api.ap-southeast-2.amazonaws.com",
+    "monitoringWebUrl": "https://github-name.lxue90048.workers.dev/github",
+    "monitoringApiCheckEveryMinutes": 10,
+    "monitoringWebCheckEveryMinutes": 15,
+    "serverExtraRollbackAlarmNames": [
+      "github-name-api-check"
+    ],
+    "monitoringWebTitle": "GitHub 人员"
   }
 }

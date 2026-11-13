@@ -5,6 +5,7 @@ import { App } from "aws-cdk-lib";
 
 import { GoApiImageStack } from "../lib/go-api-image-stack";
 import { type ExistingNetwork, GoApiServiceStack } from "../lib/go-api-service-stack";
+import { MonitoringStack } from "../lib/monitoring-stack";
 import { ServerStack } from "../lib/server-stack";
 
 const SERVER_BUNDLE_DIR = fileURLToPath(new URL("../../server/dist/lambda", import.meta.url));
@@ -28,6 +29,11 @@ function booleanContext(key: string): boolean {
 function optionalStringContext(key: string): string | undefined {
   const value: unknown = app.node.tryGetContext(key);
   return typeof value === "string" && value !== "" ? value : undefined;
+}
+
+function stringListContext(key: string): string[] {
+  const value: unknown = app.node.tryGetContext(key);
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
 function networkContext(): ExistingNetwork {
@@ -77,9 +83,19 @@ if (existsSync(`${SERVER_BUNDLE_DIR}/lambda.mjs`)) {
     databaseUrlSecretName: requiredContext("serverDatabaseUrlSecretName"),
     corsOrigin: requiredContext("serverCorsOrigin"),
     goApiUrl: optionalStringContext("serverGoApiUrl"),
+    extraRollbackAlarmNames: stringListContext("serverExtraRollbackAlarmNames"),
   });
 } else {
   process.stderr.write(
     `ServerStack skipped: no backend bundle at ${SERVER_BUNDLE_DIR} (run \`pnpm --filter server build:lambda\`).\n`
   );
 }
+
+new MonitoringStack(app, "MonitoringStack", {
+  env,
+  apiBaseUrl: requiredContext("monitoringApiBaseUrl"),
+  webUrl: requiredContext("monitoringWebUrl"),
+  webTitle: requiredContext("monitoringWebTitle"),
+  apiCheckEveryMinutes: Number(app.node.tryGetContext("monitoringApiCheckEveryMinutes") ?? 5),
+  webCheckEveryMinutes: Number(app.node.tryGetContext("monitoringWebCheckEveryMinutes") ?? 15),
+});

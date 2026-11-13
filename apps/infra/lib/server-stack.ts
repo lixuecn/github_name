@@ -34,6 +34,11 @@ export interface ServerStackProps extends StackProps {
 	readonly corsOrigin: string;
 	/** Optional internal Go service URL; when set, github.list reads through it. */
 	readonly goApiUrl?: string;
+	/**
+	 * Existing CloudWatch alarms (by name) that also roll back an in-progress
+	 * release, e.g. the Synthetics API check from MonitoringStack.
+	 */
+	readonly extraRollbackAlarmNames?: string[];
 }
 
 /**
@@ -139,8 +144,12 @@ export class ServerStack extends Stack {
 			treatMissingData: TreatMissingData.NOT_BREACHING,
 		});
 
+		const extraAlarms = (props.extraRollbackAlarmNames ?? []).map((name) =>
+			Alarm.fromAlarmName(this, `RollbackAlarm-${name}`, name)
+		);
+
 		new LambdaDeploymentGroup(this, "Canary", {
-			alarms: [errorsAlarm, durationAlarm],
+			alarms: [errorsAlarm, durationAlarm, ...extraAlarms],
 			alias,
 			application: new LambdaApplication(this, "Application", {
 				applicationName: props.functionName,
